@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace DoPHP\MailBuilder;
+
+use DoPHP\MailBuilder\Audit\EmailPreFlightAuditor;
+use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
+use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
+use DoPHP\MailBuilder\Conditions\SlotVisibilityEvaluator;
+use DoPHP\MailBuilder\MergeTags\MergeTagInterpolator;
+use DoPHP\MailBuilder\MergeTags\MergeTagRegistry;
+use DoPHP\MailBuilder\Presets\PresetRegistry;
+use DoPHP\MailBuilder\Tracking\EmailTrackingPipeline;
+use Illuminate\Support\ServiceProvider;
+
+class MailBuilderServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        $this->mergeConfigFrom(__DIR__.'/../config/mail-builder.php', 'mail-builder');
+
+        $this->app->singleton(EmailSlotCompiler::class, function ($app): EmailSlotCompiler {
+            return new EmailSlotCompiler($app['view'], $app['config']->get('mail-builder.defaults', []));
+        });
+
+        $this->app->singleton(PlainTextExtractor::class, function (): PlainTextExtractor {
+            return new PlainTextExtractor;
+        });
+
+        $this->app->singleton(PresetRegistry::class, function (): PresetRegistry {
+            return new PresetRegistry;
+        });
+
+        $this->app->singleton(MergeTagInterpolator::class, function (): MergeTagInterpolator {
+            return new MergeTagInterpolator;
+        });
+
+        $this->app->singleton(MergeTagRegistry::class, function ($app): MergeTagRegistry {
+            return new MergeTagRegistry($app[MergeTagInterpolator::class]);
+        });
+
+        $this->app->singleton(EmailPreFlightAuditor::class, function ($app): EmailPreFlightAuditor {
+            return new EmailPreFlightAuditor($app[EmailSlotCompiler::class]);
+        });
+
+        $this->app->singleton(EmailTrackingPipeline::class, function (): EmailTrackingPipeline {
+            return new EmailTrackingPipeline;
+        });
+
+        $this->app->singleton(SlotVisibilityEvaluator::class, function (): SlotVisibilityEvaluator {
+            return new SlotVisibilityEvaluator;
+        });
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'mail-builder');
+
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../config/mail-builder.php' => config_path('mail-builder.php'),
+            ], 'mail-builder-config');
+
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/mail-builder'),
+            ], 'mail-builder-views');
+        }
+    }
+}

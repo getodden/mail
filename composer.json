@@ -1,0 +1,77 @@
+{
+    "name": "dophp/laravel-mail-builder",
+    "description": "Responsive, slot-based email builder and compiler for Laravel: modular blocks, MJML/HTML import, merge tags, AMP, plain-text fallback, and pre-send audits.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "email",
+        "email-builder",
+        "mjml",
+        "newsletter",
+        "amp-email",
+        "filament"
+    ],
+    "homepage": "https://dophp.dev",
+    "support": {
+        "issues": "https://github.com/doPHP/laravel-mail-builder/issues",
+        "source": "https://github.com/doPHP/laravel-mail-builder"
+    },
+    "authors": [
+        {
+            "name": "doPHP",
+            "homepage": "https://dophp.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "ext-dom": "*",
+        "ext-libxml": "*",
+        "guzzlehttp/guzzle": "^7.8.2 || ^8.0",
+        "laravel/framework": "^11.0 || ^12.0 || ^13.0",
+        "tijsverkoyen/css-to-inline-styles": "^2.2.5"
+    },
+    "require-dev": {
+        "filament/forms": "^5.0",
+        "larastan/larastan": "^3.0",
+        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+        "pestphp/pest": "^3.8 || ^4.0 || ^5.0",
+        "pestphp/pest-plugin-laravel": "^3.0 || ^4.0 || ^5.0"
+    },
+    "suggest": {
+        "ext-zip": "Required to export template packages as ZIP archives",
+        "filament/forms": "Required to use the visual drag-and-drop EmailSlotBuilder component (^5.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "DoPHP\\MailBuilder\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "DoPHP\\MailBuilder\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "DoPHP\\MailBuilder\\MailBuilderServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
