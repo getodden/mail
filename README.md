@@ -1,8 +1,10 @@
 # Laravel Mail Builder (`dophp/laravel-mail-builder`)
 
+[![tests](https://github.com/doPHP/laravel-mail-builder/actions/workflows/tests.yml/badge.svg)](https://github.com/doPHP/laravel-mail-builder/actions/workflows/tests.yml)
+
 A modular, Outlook-bulletproof email building, auditing, and compilation engine for Laravel applications.
 
-Requires PHP 8.3+ and Laravel 11, 12, or 13. Maintained by [doPHP](https://dophp.dev).
+Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [doPHP](https://dophp.dev).
 
 ---
 
