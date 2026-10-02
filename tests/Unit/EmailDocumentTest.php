@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Tests\TestCase;
 
 class EmailDocumentTest extends TestCase
 {

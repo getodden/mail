@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use DoPHP\MailBuilder\Audit\DevicePreviewService;
-use DoPHP\MailBuilder\Audit\DnsDeliverabilityValidator;
-use DoPHP\MailBuilder\Audit\ScreenshotProviderInterface;
-use DoPHP\MailBuilder\Compilers\EmailImageOptimizer;
-use DoPHP\MailBuilder\Compilers\GmailActionCompiler;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\Mail\TemplateMailable;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Themes\FontManager;
+use Odden\MailBuilder\Audit\DevicePreviewService;
+use Odden\MailBuilder\Audit\DnsDeliverabilityValidator;
+use Odden\MailBuilder\Audit\ScreenshotProviderInterface;
+use Odden\MailBuilder\Compilers\EmailImageOptimizer;
+use Odden\MailBuilder\Compilers\GmailActionCompiler;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Mail\TemplateMailable;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Themes\FontManager;
 
 it('generates Schema.org JSON-LD scripts for Gmail Quick Actions', function () {
     $compiler = GmailActionCompiler::make()

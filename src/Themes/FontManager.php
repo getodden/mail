@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Themes;
+namespace Odden\MailBuilder\Themes;
 
 class FontManager
 {

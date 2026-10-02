@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Feature;
+namespace Odden\MailBuilder\Tests\Feature;
 
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Data\EmailSlot;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Tests\TestCase;
 
 class EmailSlotCompilerTest extends TestCase
 {

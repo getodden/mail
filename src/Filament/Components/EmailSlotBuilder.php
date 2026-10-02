@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Filament\Components;
+namespace Odden\MailBuilder\Filament\Components;
 
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
-use DoPHP\MailBuilder\Enums\ButtonStyle;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Enums\ButtonStyle;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Presets\PresetRegistry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;

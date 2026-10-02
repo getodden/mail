@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\MergeTags;
+namespace Odden\MailBuilder\MergeTags;
 
 use Carbon\Carbon;
 use Illuminate\Support\Arr;

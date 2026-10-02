@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Data;
+namespace Odden\MailBuilder\Data;
 
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
-use DoPHP\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Enums\SlotType;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 use JsonSerializable;

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Audit;
+namespace Odden\MailBuilder\Audit;
 
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Data\EmailDocument;
 
 class EmailPreFlightAuditor
 {

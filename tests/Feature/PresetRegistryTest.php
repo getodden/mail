@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Feature;
+namespace Odden\MailBuilder\Tests\Feature;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Presets\PresetContract;
-use DoPHP\MailBuilder\Presets\PresetRegistry;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Presets\PresetContract;
+use Odden\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Tests\TestCase;
 
 class PresetRegistryTest extends TestCase
 {

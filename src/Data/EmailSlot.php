@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Data;
+namespace Odden\MailBuilder\Data;
 
-use DoPHP\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Enums\SlotType;
 use Illuminate\Support\Arr;
 use InvalidArgumentException;
 

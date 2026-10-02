@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder;
+namespace Odden\MailBuilder;
 
-use DoPHP\MailBuilder\Audit\EmailPreFlightAuditor;
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
-use DoPHP\MailBuilder\Conditions\SlotVisibilityEvaluator;
-use DoPHP\MailBuilder\MergeTags\MergeTagInterpolator;
-use DoPHP\MailBuilder\MergeTags\MergeTagRegistry;
-use DoPHP\MailBuilder\Presets\PresetRegistry;
-use DoPHP\MailBuilder\Tracking\EmailTrackingPipeline;
+use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Conditions\SlotVisibilityEvaluator;
+use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\MergeTags\MergeTagRegistry;
+use Odden\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Tracking\EmailTrackingPipeline;
 use Illuminate\Support\ServiceProvider;
 
 class MailBuilderServiceProvider extends ServiceProvider

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Compilers;
+namespace Odden\MailBuilder\Compilers;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Data\EmailSlot;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\MergeTags\MergeTagInterpolator;
-use DoPHP\MailBuilder\Themes\FontManager;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\Themes\FontManager;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\Facades\Http;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;

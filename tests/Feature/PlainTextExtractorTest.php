@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Feature;
+namespace Odden\MailBuilder\Tests\Feature;
 
-use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Tests\TestCase;
 
 class PlainTextExtractorTest extends TestCase
 {

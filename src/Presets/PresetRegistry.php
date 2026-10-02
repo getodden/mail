@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Presets;
+namespace Odden\MailBuilder\Presets;
 
 use InvalidArgumentException;
 

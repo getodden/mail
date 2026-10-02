@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\MergeTags\MergeTagInterpolator;
-use DoPHP\MailBuilder\MergeTags\MergeTagRegistry;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\MergeTags\MergeTagRegistry;
+use Odden\MailBuilder\Tests\TestCase;
 
 class MergeTagTest extends TestCase
 {

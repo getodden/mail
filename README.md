@@ -1,10 +1,10 @@
-# Laravel Mail Builder (`dophp/laravel-mail-builder`)
+# Laravel Mail Builder (`getodden/mail`)
 
-[![tests](https://github.com/doPHP/laravel-mail-builder/actions/workflows/tests.yml/badge.svg)](https://github.com/doPHP/laravel-mail-builder/actions/workflows/tests.yml)
+[![tests](https://github.com/getodden/mail/actions/workflows/tests.yml/badge.svg)](https://github.com/getodden/mail/actions/workflows/tests.yml)
 
 A modular, Outlook-bulletproof email building, auditing, and compilation engine for Laravel applications.
 
-Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [doPHP](https://dophp.dev).
+Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://odden.io).
 
 ---
 
@@ -26,7 +26,7 @@ Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [doPHP](https://dophp.dev)
 ## Installation
 
 ```bash
-composer require dophp/laravel-mail-builder
+composer require getodden/mail
 ```
 
 Publish configuration and views (optional):
@@ -54,8 +54,8 @@ CAN-SPAM and similar laws require a physical mailing address in marketing email,
 ### 1. Building and Compiling an Email
 
 ```php
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Enums\SlotType;
 
 // Fluent EmailDocument API
 $doc = MailBuilder::document(
@@ -126,7 +126,7 @@ $interpolated = MailBuilder::interpolate($template, [
 Built-in tags are `{{unsubscribe_url}}`, `{{current_year}}`, and `{{web_view_url}}`. Register your application's own tags so they appear in the Filament builder's tag picker and in previews:
 
 ```php
-use DoPHP\MailBuilder\MergeTags\MergeTagRegistry;
+use Odden\MailBuilder\MergeTags\MergeTagRegistry;
 
 // In a service provider's register() method
 $this->callAfterResolving(MergeTagRegistry::class, function (MergeTagRegistry $registry): void {
@@ -197,7 +197,7 @@ $dns = MailBuilder::validateDns('yourdomain.com');
 ### 5. Sending Emails via `TemplateMailable`
 
 ```php
-use DoPHP\MailBuilder\Mail\TemplateMailable;
+use Odden\MailBuilder\Mail\TemplateMailable;
 use Illuminate\Support\Facades\Mail;
 
 Mail::to('user@example.com')->send(
@@ -220,7 +220,7 @@ Mail::to('user@example.com')->send(
 Requires `filament/forms` ^5.0. To integrate the modular slot builder into any Filament Resource:
 
 ```php
-use DoPHP\MailBuilder\Filament\Components\EmailSlotBuilder;
+use Odden\MailBuilder\Filament\Components\EmailSlotBuilder;
 
 public static function form(Schema $schema): Schema
 {

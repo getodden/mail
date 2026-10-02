@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests;
+namespace Odden\MailBuilder\Tests;
 
-use DoPHP\MailBuilder\MailBuilderServiceProvider;
+use Odden\MailBuilder\MailBuilderServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra

@@ -1,5 +1,5 @@
 @php
-    $registry = app(\DoPHP\MailBuilder\MergeTags\MergeTagRegistry::class);
+    $registry = app(\Odden\MailBuilder\MergeTags\MergeTagRegistry::class);
     $categories = $registry->all();
     $sampleContext = $registry->sampleContext();
 @endphp

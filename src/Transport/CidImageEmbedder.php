@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Transport;
+namespace Odden\MailBuilder\Transport;
 
 class CidImageEmbedder
 {

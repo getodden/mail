@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Presets;
+namespace Odden\MailBuilder\Presets;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Data\EmailDocument;
 
 interface PresetContract
 {

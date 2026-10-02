@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\Data\EmailSlot;
-use DoPHP\MailBuilder\Enums\ButtonStyle;
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Enums\ButtonStyle;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Tests\TestCase;
 use InvalidArgumentException;
 
 class EmailSlotTest extends TestCase

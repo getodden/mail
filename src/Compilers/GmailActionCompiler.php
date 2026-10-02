@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Compilers;
+namespace Odden\MailBuilder\Compilers;
 
 class GmailActionCompiler
 {

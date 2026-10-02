@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Exporters;
+namespace Odden\MailBuilder\Exporters;
 
 use ZipArchive;
 
@@ -130,7 +130,7 @@ MJML;
         $readme = <<<README
 # {$templateName} - Email Export Package
 
-This standalone package was compiled and exported with doPHP Laravel Mail Builder.
+This standalone package was compiled and exported with Odden Mail Builder.
 
 ## Contents
 - `index.html`: Fully inlined, Outlook VML-compatible, responsive HTML email.

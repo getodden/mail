@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Parsers;
+namespace Odden\MailBuilder\Parsers;
 
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMXPath;
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Data\EmailSlot;
-use DoPHP\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Enums\SlotType;
 
 class MjmlToSlotsParser
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Compilers;
+namespace Odden\MailBuilder\Compilers;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\MailBuilder;
 
 class PlainTextDiffInspector
 {

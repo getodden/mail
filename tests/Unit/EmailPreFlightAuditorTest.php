@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\Audit\EmailPreFlightAuditor;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Tests\TestCase;
 
 class EmailPreFlightAuditorTest extends TestCase
 {

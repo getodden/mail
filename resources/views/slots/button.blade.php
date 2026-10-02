@@ -1,5 +1,5 @@
 @php
-    use DoPHP\MailBuilder\Enums\ButtonStyle;
+    use Odden\MailBuilder\Enums\ButtonStyle;
 
     $text = $data['button_text'] ?? $data['text'] ?? 'Click Here';
     $url = $data['button_url'] ?? $data['url'] ?? '#';

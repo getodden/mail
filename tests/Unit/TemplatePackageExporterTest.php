@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\Exporters\TemplatePackageExporter;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Exporters\TemplatePackageExporter;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Tests\TestCase;
 use ZipArchive;
 
 class TemplatePackageExporterTest extends TestCase

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Presets;
+namespace Odden\MailBuilder\Presets;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Enums\SlotType;
 
 class TransactionalReceiptPreset implements PresetContract
 {

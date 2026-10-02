@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tracking;
+namespace Odden\MailBuilder\Tracking;
 
 class EmailTrackingPipeline
 {

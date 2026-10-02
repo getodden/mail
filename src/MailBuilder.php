@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder;
+namespace Odden\MailBuilder;
 
-use DoPHP\MailBuilder\Audit\DarkModeSimulator;
-use DoPHP\MailBuilder\Audit\DevicePreviewService;
-use DoPHP\MailBuilder\Audit\DnsDeliverabilityValidator;
-use DoPHP\MailBuilder\Audit\EmailPreFlightAuditor;
-use DoPHP\MailBuilder\Audit\InboxEnvelopeSimulator;
-use DoPHP\MailBuilder\Audit\PreFlightAuditResult;
-use DoPHP\MailBuilder\Audit\RenderPerformanceAuditor;
-use DoPHP\MailBuilder\Audit\WcagContrastAuditor;
-use DoPHP\MailBuilder\Compilers\AmpEmailCompiler;
-use DoPHP\MailBuilder\Compilers\EmailImageOptimizer;
-use DoPHP\MailBuilder\Compilers\EmailSlotCompiler;
-use DoPHP\MailBuilder\Compilers\GmailActionCompiler;
-use DoPHP\MailBuilder\Compilers\PlainTextDiffInspector;
-use DoPHP\MailBuilder\Compilers\PlainTextExtractor;
-use DoPHP\MailBuilder\Conditions\SlotVisibilityEvaluator;
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\Exporters\TemplatePackageExporter;
-use DoPHP\MailBuilder\MergeTags\MergeTagRegistry;
-use DoPHP\MailBuilder\Parsers\HtmlToSlotsParser;
-use DoPHP\MailBuilder\Parsers\MjmlToSlotsParser;
-use DoPHP\MailBuilder\Presets\PresetRegistry;
-use DoPHP\MailBuilder\Themes\ThemeRegistry;
-use DoPHP\MailBuilder\Tracking\EmailTrackingPipeline;
-use DoPHP\MailBuilder\Transport\CidImageEmbedder;
+use Odden\MailBuilder\Audit\DarkModeSimulator;
+use Odden\MailBuilder\Audit\DevicePreviewService;
+use Odden\MailBuilder\Audit\DnsDeliverabilityValidator;
+use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
+use Odden\MailBuilder\Audit\InboxEnvelopeSimulator;
+use Odden\MailBuilder\Audit\PreFlightAuditResult;
+use Odden\MailBuilder\Audit\RenderPerformanceAuditor;
+use Odden\MailBuilder\Audit\WcagContrastAuditor;
+use Odden\MailBuilder\Compilers\AmpEmailCompiler;
+use Odden\MailBuilder\Compilers\EmailImageOptimizer;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\GmailActionCompiler;
+use Odden\MailBuilder\Compilers\PlainTextDiffInspector;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Conditions\SlotVisibilityEvaluator;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Exporters\TemplatePackageExporter;
+use Odden\MailBuilder\MergeTags\MergeTagRegistry;
+use Odden\MailBuilder\Parsers\HtmlToSlotsParser;
+use Odden\MailBuilder\Parsers\MjmlToSlotsParser;
+use Odden\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Themes\ThemeRegistry;
+use Odden\MailBuilder\Tracking\EmailTrackingPipeline;
+use Odden\MailBuilder\Transport\CidImageEmbedder;
 
 class MailBuilder
 {

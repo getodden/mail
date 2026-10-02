@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Conditions;
+namespace Odden\MailBuilder\Conditions;
 
-use DoPHP\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Data\EmailSlot;
 use Illuminate\Support\Arr;
 
 class SlotVisibilityEvaluator

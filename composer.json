@@ -1,5 +1,5 @@
 {
-    "name": "dophp/laravel-mail-builder",
+    "name": "getodden/mail",
     "description": "Responsive, slot-based email builder and compiler for Laravel: modular blocks, MJML/HTML import, merge tags, AMP, plain-text fallback, and pre-send audits.",
     "type": "library",
     "license": "MIT",
@@ -12,15 +12,15 @@
         "amp-email",
         "filament"
     ],
-    "homepage": "https://dophp.dev",
+    "homepage": "https://odden.io",
     "support": {
-        "issues": "https://github.com/doPHP/laravel-mail-builder/issues",
-        "source": "https://github.com/doPHP/laravel-mail-builder"
+        "issues": "https://github.com/getodden/mail/issues",
+        "source": "https://github.com/getodden/mail"
     },
     "authors": [
         {
-            "name": "doPHP",
-            "homepage": "https://dophp.dev"
+            "name": "CaskStack, LLC",
+            "homepage": "https://odden.io"
         }
     ],
     "require": {
@@ -45,12 +45,12 @@
     },
     "autoload": {
         "psr-4": {
-            "DoPHP\\MailBuilder\\": "src/"
+            "Odden\\MailBuilder\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DoPHP\\MailBuilder\\Tests\\": "tests/"
+            "Odden\\MailBuilder\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -62,7 +62,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "DoPHP\\MailBuilder\\MailBuilderServiceProvider"
+                "Odden\\MailBuilder\\MailBuilderServiceProvider"
             ]
         },
         "branch-alias": {

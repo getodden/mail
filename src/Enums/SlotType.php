@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Enums;
+namespace Odden\MailBuilder\Enums;
 
 enum SlotType: string
 {

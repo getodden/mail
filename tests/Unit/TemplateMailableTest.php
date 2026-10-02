@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\Enums\SlotType;
-use DoPHP\MailBuilder\Mail\TemplateMailable;
-use DoPHP\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Mail\TemplateMailable;
+use Odden\MailBuilder\Tests\TestCase;
 
 class TemplateMailableTest extends TestCase
 {

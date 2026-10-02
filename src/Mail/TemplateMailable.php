@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Mail;
+namespace Odden\MailBuilder\Mail;
 
-use DoPHP\MailBuilder\Data\EmailDocument;
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Transport\CidImageEmbedder;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Transport\CidImageEmbedder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DoPHP\MailBuilder\Tests\Unit;
+namespace Odden\MailBuilder\Tests\Unit;
 
-use DoPHP\MailBuilder\MailBuilder;
-use DoPHP\MailBuilder\Tests\TestCase;
-use DoPHP\MailBuilder\Tracking\EmailTrackingPipeline;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Tests\TestCase;
+use Odden\MailBuilder\Tracking\EmailTrackingPipeline;
 
 class EmailTrackingPipelineTest extends TestCase
 {
