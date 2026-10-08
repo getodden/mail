@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
@@ -63,6 +64,12 @@ class MailBuilderServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'mail-builder');
 
+        if ((bool) config('mail-builder.editor.routes.enabled', false)) {
+            Route::middleware((array) config('mail-builder.editor.routes.middleware', ['web']))
+                ->prefix((string) config('mail-builder.editor.routes.prefix', 'mail-builder/editor'))
+                ->group(__DIR__.'/../routes/editor.php');
+        }
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/mail-builder.php' => config_path('mail-builder.php'),
@@ -71,6 +78,10 @@ class MailBuilderServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../resources/views' => resource_path('views/vendor/mail-builder'),
             ], 'mail-builder-views');
+
+            $this->publishes([
+                __DIR__.'/../resources/js/editor' => public_path('vendor/mail-builder/editor'),
+            ], 'mail-builder-assets');
         }
     }
 }

@@ -1,2 +1,15 @@
 providers:
   - Odden\MailBuilder\MailBuilderServiceProvider
+
+env:
+  - MAIL_BUILDER_EDITOR_ROUTES=true
+
+workbench:
+  start: /
+  install: false
+  health: false
+  discovers:
+    web: true
+    config: false
+    commands: false
+    views: true

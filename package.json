@@ -1,0 +1,9 @@
+{
+    "name": "getodden-mail-editor",
+    "private": true,
+    "type": "module",
+    "description": "Tests for the drag-and-drop editor shipped in resources/js/editor.",
+    "scripts": {
+        "test:js": "node --test tests/js/*.test.mjs"
+    }
+}

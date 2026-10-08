@@ -1,0 +1,912 @@
+// <odden-mail-editor>: a drag-and-drop editor for the email slots of getodden/mail.
+//
+// It edits the slot document as data and never edits HTML: the server renders the preview with the same compiler that
+// builds the email, so what you see is what is sent. See the README for the attributes, properties and events.
+
+import { clear, h } from './dom.js';
+import { renderField } from './fields.js';
+import { History } from './history.js';
+import {
+    addItem,
+    createSlot,
+    dropLineY,
+    duplicateSlot,
+    fromDocument,
+    indexOfSlot,
+    insertAt,
+    insertionIndex,
+    moveBy,
+    moveItem,
+    moveTo,
+    removeItem,
+    removeSlot,
+    setField,
+    toDocument,
+} from './model.js';
+
+const STYLESHEET = new URL('./editor.css', import.meta.url).href;
+const RENDER_DELAY_MS = 250;
+const DRAG_THRESHOLD_PX = 5;
+const SCROLL_EDGE_PX = 70;
+
+/** The default adapter: the two routes of the package (`mail-builder.editor.routes`). */
+function fetchAdapter(element) {
+    const headers = () => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+        return {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+        };
+    };
+
+    return {
+        async loadSchema() {
+            const response = await fetch(element.getAttribute('schema-url'), { headers: headers(), credentials: 'same-origin' });
+
+            if (!response.ok) {
+                throw new Error(`The schema could not be loaded (${response.status}).`);
+            }
+
+            return response.json();
+        },
+        async preview(documentData) {
+            const response = await fetch(element.getAttribute('preview-url'), { method: 'POST', headers: headers(), credentials: 'same-origin', body: JSON.stringify(documentData) });
+
+            if (!response.ok) {
+                throw new Error(`The preview could not be rendered (${response.status}).`);
+            }
+
+            return (await response.json()).html;
+        },
+    };
+}
+
+export class OddenMailEditor extends HTMLElement {
+    #adapter = null;
+    #schema = new Map();
+    #slots = [];
+    #base = {};
+    #selectedId = null;
+    #history = new History([]);
+    #device = 'desktop';
+    #renderTimer = null;
+    #renderSeq = 0;
+    #renderedIds = [];
+    #rects = [];
+    #drag = null;
+    #pendingValue = null;
+    #built = false;
+    #ready = false;
+    #refs = {};
+    #active = false;
+    #onKeydown = (event) => {
+        // Shortcuts work while this editor was the last thing used, even if a redraw dropped keyboard focus to the page.
+        if (this.#active) {
+            this.#handleKey(event);
+        }
+    };
+    #onPointerdown = (event) => {
+        this.#active = this.contains(event.target);
+    };
+    #onFocusin = (event) => {
+        if (this.contains(event.target)) {
+            this.#active = true;
+        }
+    };
+    #onResize = () => this.#syncOverlay();
+    #docObserver = null;
+
+    static get observedAttributes() {
+        return ['value'];
+    }
+
+    /** `{subject?, preview_text?, theme?, slots: [{type, data, visibility?}]}`: the same shape the compiler takes. */
+    get value() {
+        return toDocument(this.#slots, this.#base);
+    }
+
+    set value(document) {
+        // Until the schema has loaded the editor cannot show slots: keep the value and apply it then.
+        if (!this.#ready) {
+            this.#pendingValue = document;
+
+            return;
+        }
+
+        this.#load(document);
+    }
+
+    /** Replace how the editor talks to the server (`{loadSchema(), preview(document)}`), for tests or other routes. */
+    set adapter(adapter) {
+        this.#adapter = adapter;
+    }
+
+    attributeChangedCallback(name, _old, next) {
+        if (name === 'value' && next) {
+            try {
+                this.value = JSON.parse(next);
+            } catch {
+                // An invalid attribute is ignored: the property is the supported way to set the value.
+            }
+        }
+    }
+
+    connectedCallback() {
+        this.#injectStyles();
+        this.#build();
+        document.addEventListener('keydown', this.#onKeydown);
+        document.addEventListener('pointerdown', this.#onPointerdown, true);
+        document.addEventListener('focusin', this.#onFocusin);
+        window.addEventListener('resize', this.#onResize);
+        this.#start();
+    }
+
+    disconnectedCallback() {
+        document.removeEventListener('keydown', this.#onKeydown);
+        document.removeEventListener('pointerdown', this.#onPointerdown, true);
+        document.removeEventListener('focusin', this.#onFocusin);
+        window.removeEventListener('resize', this.#onResize);
+        clearTimeout(this.#renderTimer);
+        this.#docObserver?.disconnect();
+        this.#endDrag(true);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Setup
+
+    #injectStyles() {
+        if (!document.querySelector(`link[data-odden-mail-editor]`)) {
+            document.head.append(h('link', { rel: 'stylesheet', href: STYLESHEET, 'data-odden-mail-editor': '' }));
+        }
+    }
+
+    #build() {
+        if (this.#built) {
+            return;
+        }
+
+        const refs = this.#refs;
+
+        refs.undo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#undo() }, 'Undo');
+        refs.redo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#redo() }, 'Redo');
+        refs.desktop = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'true', onclick: () => this.#setDevice('desktop') }, 'Desktop');
+        refs.mobile = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'false', onclick: () => this.#setDevice('mobile') }, 'Mobile');
+        refs.status = h('span', { class: 'ome-status', role: 'status' });
+        refs.live = h('div', { class: 'ome-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
+        refs.palette = h('div', { class: 'ome-palette' });
+        refs.structure = h('ol', { class: 'ome-structure' });
+        refs.panel = h('div', { class: 'ome-panel' });
+        refs.iframe = h('iframe', { class: 'ome-iframe', title: 'Email preview', sandbox: 'allow-same-origin', scrolling: 'no' });
+        refs.boxes = h('div', { class: 'ome-boxes', 'aria-hidden': 'true' });
+        refs.drop = h('div', { class: 'ome-drop', hidden: true });
+        refs.toolbar = h('div', { class: 'ome-slot-toolbar', role: 'toolbar', 'aria-label': 'Selected block', hidden: true });
+        refs.overlay = h('div', { class: 'ome-overlay' }, refs.boxes, refs.drop, refs.toolbar);
+        refs.stage = h('div', { class: 'ome-stage' }, refs.iframe, refs.overlay);
+        refs.empty = h('p', { class: 'ome-empty', hidden: true }, 'Drag a block here, or choose one from the list on the left.');
+        refs.error = h('p', { class: 'ome-error', role: 'alert', hidden: true });
+
+        const root = h(
+            'div',
+            { class: 'ome' },
+            h('div', { class: 'ome-bar' }, refs.undo, refs.redo, h('span', { class: 'ome-divider', 'aria-hidden': 'true' }), refs.desktop, refs.mobile, refs.status),
+            h(
+                'div',
+                { class: 'ome-body' },
+                h('aside', { class: 'ome-left', 'aria-label': 'Blocks and structure' }, h('h2', { class: 'ome-heading' }, 'Blocks'), refs.palette, h('h2', { class: 'ome-heading' }, 'Structure'), refs.structure),
+                h('main', { class: 'ome-canvas' }, refs.error, refs.empty, refs.stage),
+                h('aside', { class: 'ome-right', 'aria-label': 'Block settings' }, refs.panel),
+            ),
+            refs.live,
+        );
+
+        this.append(root);
+        this.#built = true;
+
+        if (this.hasAttribute('name')) {
+            refs.input = h('input', { type: 'hidden', name: this.getAttribute('name') });
+            this.append(refs.input);
+        }
+
+        refs.iframe.addEventListener('load', () => {
+            // The preview's own size changes when the width changes (mobile), the fonts load, or text wraps: follow it.
+            this.#docObserver?.disconnect();
+
+            const root = refs.iframe.contentDocument?.documentElement;
+
+            if (root) {
+                this.#docObserver = new ResizeObserver(() => this.#syncOverlay());
+                this.#docObserver.observe(root);
+            }
+
+            this.#syncOverlay();
+        });
+    }
+
+    async #start() {
+        this.#adapter ??= fetchAdapter(this);
+        this.#setStatus('Loading…');
+
+        try {
+            const schema = await this.#adapter.loadSchema();
+
+            this.#schema = new Map(schema.slots.map((slotSchema) => [slotSchema.type, slotSchema]));
+        } catch (error) {
+            this.#showError(error.message);
+
+            return;
+        }
+
+        let initial = this.#pendingValue;
+
+        if (initial === null && this.hasAttribute('value')) {
+            try {
+                initial = JSON.parse(this.getAttribute('value'));
+            } catch {
+                initial = null;
+            }
+        }
+
+        this.#ready = true;
+        this.#pendingValue = null;
+        this.#load(initial ?? { slots: [] });
+        this.#renderPalette();
+    }
+
+    #load(document) {
+        const { slots, ...base } = document ?? {};
+
+        this.#base = base;
+        this.#slots = fromDocument({ slots });
+        this.#selectedId = null;
+        this.#history.reset(this.#slots);
+        this.#refresh({ immediate: true });
+        this.#sync(false);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // State changes
+
+    /** Apply a new slot list: record it for undo, redraw, and tell the host. */
+    #commit(next, { key = null, announce = null, select } = {}) {
+        if (next === this.#slots) {
+            return;
+        }
+
+        this.#history.push(next, key);
+        this.#slots = next;
+
+        if (select !== undefined) {
+            this.#selectedId = select;
+        } else if (this.#selectedId !== null && indexOfSlot(next, this.#selectedId) === -1) {
+            this.#selectedId = null;
+        }
+
+        this.#refresh({ panel: key === null });
+        this.#sync(true);
+
+        if (announce) {
+            this.#announce(announce);
+        }
+    }
+
+    #undo() {
+        if (!this.#history.canUndo) {
+            return;
+        }
+
+        this.#slots = this.#history.undo();
+        this.#afterHistory('Undone.');
+    }
+
+    #redo() {
+        if (!this.#history.canRedo) {
+            return;
+        }
+
+        this.#slots = this.#history.redo();
+        this.#afterHistory('Redone.');
+    }
+
+    #afterHistory(message) {
+        if (this.#selectedId !== null && indexOfSlot(this.#slots, this.#selectedId) === -1) {
+            this.#selectedId = null;
+        }
+
+        this.#refresh({});
+        this.#sync(true);
+        this.#announce(message);
+    }
+
+    #select(id, { focus = false } = {}) {
+        this.#selectedId = id;
+        this.#renderStructure();
+        this.#renderPanel();
+        this.#drawOverlay();
+
+        if (focus) {
+            this.#refs.panel.querySelector('input, textarea, select')?.focus();
+        }
+    }
+
+    #setDevice(device) {
+        this.#device = device;
+        this.#refs.desktop.setAttribute('aria-pressed', String(device === 'desktop'));
+        this.#refs.mobile.setAttribute('aria-pressed', String(device === 'mobile'));
+        this.#refs.stage.dataset.device = device;
+    }
+
+    /** Redraw what depends on the slot list. `panel: false` keeps the open field focused while typing. */
+    #refresh({ panel = true, immediate = false } = {}) {
+        this.#renderStructure();
+
+        if (panel) {
+            this.#renderPanel();
+        }
+
+        this.#refs.undo.disabled = !this.#history.canUndo;
+        this.#refs.redo.disabled = !this.#history.canRedo;
+        this.#refs.empty.hidden = this.#slots.length > 0;
+        this.#scheduleRender(immediate);
+    }
+
+    /** Tell the host the document changed. */
+    #sync(notify) {
+        const value = this.value;
+
+        if (this.#refs.input) {
+            this.#refs.input.value = JSON.stringify(value);
+        }
+
+        if (notify) {
+            this.dispatchEvent(new CustomEvent('change', { detail: value, bubbles: true }));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Preview
+
+    #scheduleRender(immediate) {
+        clearTimeout(this.#renderTimer);
+        this.#setStatus('Updating preview…');
+
+        if (immediate) {
+            this.#renderPreview();
+        } else {
+            this.#renderTimer = setTimeout(() => this.#renderPreview(), RENDER_DELAY_MS);
+        }
+    }
+
+    async #renderPreview() {
+        const seq = ++this.#renderSeq;
+        const ids = this.#slots.map((slot) => slot.id);
+
+        if (this.#slots.length === 0) {
+            this.#renderedIds = [];
+            this.#refs.iframe.srcdoc = '';
+            this.#refs.iframe.style.height = '0px';
+            this.#rects = [];
+            this.#drawOverlay();
+            this.#setStatus('');
+
+            return;
+        }
+
+        try {
+            const html = await this.#adapter.preview(toDocument(this.#slots, this.#base));
+
+            // A newer edit started while this preview was rendering: let that one win.
+            if (seq !== this.#renderSeq) {
+                return;
+            }
+
+            this.#renderedIds = ids;
+            this.#showError(null);
+            this.#refs.iframe.srcdoc = html;
+        } catch (error) {
+            if (seq === this.#renderSeq) {
+                this.#showError(error.message);
+                this.#setStatus('');
+            }
+        }
+    }
+
+    /** Measure the slots inside the preview and place the editor's outlines and handles over them. */
+    #syncOverlay() {
+        const doc = this.#refs.iframe.contentDocument;
+
+        if (!doc || !doc.body || this.#slots.length === 0) {
+            return;
+        }
+
+        const height = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
+
+        this.#refs.iframe.style.height = `${height}px`;
+        this.#rects = [...doc.querySelectorAll('[data-odden-slot]')].map((node) => {
+            const rect = node.getBoundingClientRect();
+
+            return { index: Number(node.dataset.oddenSlot), top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
+        });
+
+        this.#drawOverlay();
+        this.#setStatus('');
+    }
+
+    #drawOverlay() {
+        const { boxes, toolbar } = this.#refs;
+
+        clear(boxes);
+        toolbar.hidden = true;
+
+        for (const rect of this.#rects) {
+            const id = this.#renderedIds[rect.index];
+
+            if (!id) {
+                continue;
+            }
+
+            const selected = id === this.#selectedId;
+            const box = h('div', {
+                class: `ome-box${selected ? ' is-selected' : ''}`,
+                'data-id': id,
+                style: `top:${rect.top}px;left:${rect.left}px;width:${rect.right - rect.left}px;height:${rect.bottom - rect.top}px`,
+                onpointerdown: (event) => this.#boxPointerDown(event, id),
+            });
+
+            boxes.append(box);
+
+            if (selected) {
+                this.#placeToolbar(rect, id);
+            }
+        }
+    }
+
+    #placeToolbar(rect, id) {
+        const { toolbar } = this.#refs;
+        const index = indexOfSlot(this.#slots, id);
+        const label = this.#labelOf(this.#slots[index]);
+
+        clear(toolbar);
+        toolbar.append(
+            h('button', { type: 'button', class: 'ome-handle', 'aria-label': `Drag ${label} to move it. Or use the move buttons.`, title: 'Drag to move', onpointerdown: (event) => this.#startDrag(event, { kind: 'move', id, label }) }, '⠿'),
+            h('span', { class: 'ome-slot-name' }, label),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move ${label} up`, title: 'Move up', disabled: index === 0, onclick: () => this.#moveSlot(id, -1) }, '↑'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move ${label} down`, title: 'Move down', disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(id, 1) }, '↓'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Duplicate ${label}`, title: 'Duplicate', onclick: () => this.#duplicate(id) }, '⧉'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Delete ${label}`, title: 'Delete', onclick: () => this.#remove(id) }, '✕'),
+        );
+        toolbar.style.top = `${Math.max(rect.top - 34, 2)}px`;
+        toolbar.style.left = `${Math.max(rect.left + 4, 2)}px`;
+        toolbar.hidden = false;
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Actions
+
+    #insertNew(typeKey, index) {
+        const slotSchema = this.#schema.get(typeKey);
+
+        if (!slotSchema) {
+            return;
+        }
+
+        const slot = createSlot(slotSchema);
+        const at = index ?? this.#insertionPoint();
+
+        this.#commit(insertAt(this.#slots, at, slot), { select: slot.id, announce: `${slotSchema.label} added at position ${at + 1} of ${this.#slots.length + 1}.` });
+    }
+
+    /** Where a block chosen from the list goes: after the selected block, or at the end. */
+    #insertionPoint() {
+        const index = this.#selectedId === null ? -1 : indexOfSlot(this.#slots, this.#selectedId);
+
+        return index === -1 ? this.#slots.length : index + 1;
+    }
+
+    #moveSlot(id, step) {
+        const next = moveBy(this.#slots, id, step);
+
+        if (next === this.#slots) {
+            return;
+        }
+
+        this.#commit(next, { announce: `${this.#labelOf(this.#slots[indexOfSlot(this.#slots, id)])} moved to position ${indexOfSlot(next, id) + 1} of ${next.length}.` });
+        this.#focusStructure(id, step < 0 ? 'up' : 'down');
+    }
+
+    #duplicate(id) {
+        const { slots, copy } = duplicateSlot(this.#slots, id);
+
+        if (copy) {
+            this.#commit(slots, { select: copy.id, announce: `Duplicated. The copy is at position ${indexOfSlot(slots, copy.id) + 1} of ${slots.length}.` });
+        }
+    }
+
+    #remove(id) {
+        const index = indexOfSlot(this.#slots, id);
+
+        if (index === -1) {
+            return;
+        }
+
+        const label = this.#labelOf(this.#slots[index]);
+        const next = removeSlot(this.#slots, id);
+        const neighbour = next[Math.min(index, next.length - 1)]?.id ?? null;
+
+        this.#commit(next, { select: neighbour, announce: `${label} deleted. Press undo to bring it back.` });
+        this.#refs.structure.querySelector('.ome-structure-select')?.focus({ preventScroll: true });
+    }
+
+    #changeField(id, path, value) {
+        this.#commit(setField(this.#slots, id, path, value), { key: `${id}:${path.join('.')}` });
+    }
+
+    #itemAction(id, action, path, index) {
+        const key = path[0];
+        const field = this.#schema.get(this.#slots[indexOfSlot(this.#slots, id)].type)?.fields.find((f) => f.key === key);
+
+        if (!field) {
+            return;
+        }
+
+        let next = this.#slots;
+
+        if (action === 'add') {
+            const item = {};
+
+            for (const sub of field.items) {
+                if (sub.default !== null && sub.default !== undefined) {
+                    item[sub.key] = sub.default;
+                }
+            }
+
+            next = addItem(next, id, key, item);
+        } else if (action === 'remove') {
+            next = removeItem(next, id, key, index);
+        } else {
+            next = moveItem(next, id, key, index, action === 'up' ? -1 : 1);
+        }
+
+        this.#commit(next, { announce: `List item ${action === 'add' ? 'added' : action === 'remove' ? 'removed' : 'moved'}.` });
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Palette, structure and property panel
+
+    #renderPalette() {
+        const { palette } = this.#refs;
+
+        clear(palette);
+
+        for (const slotSchema of this.#schema.values()) {
+            palette.append(
+                h(
+                    'button',
+                    {
+                        type: 'button',
+                        class: 'ome-palette-item',
+                        'data-type': slotSchema.type,
+                        title: `${slotSchema.label}. Click to add, or drag onto the email.`,
+                        onclick: (event) => {
+                            // A drag ends with a click on the same element: that click must not add a second block.
+                            if (this.#suppressClick) {
+                                this.#suppressClick = false;
+                                event.preventDefault();
+
+                                return;
+                            }
+
+                            this.#insertNew(slotSchema.type, null);
+                        },
+                        onpointerdown: (event) => this.#startDrag(event, { kind: 'new', type: slotSchema.type, label: slotSchema.label }),
+                    },
+                    h('span', { class: 'ome-palette-glyph', 'aria-hidden': 'true' }, '+'),
+                    slotSchema.label,
+                ),
+            );
+        }
+    }
+
+    #labelOf(slot) {
+        return this.#schema.get(slot.type)?.label ?? slot.type.replaceAll('_', ' ');
+    }
+
+    #summaryOf(slot) {
+        const fields = this.#schema.get(slot.type)?.fields ?? [];
+        const text = fields.filter((f) => ['text', 'textarea', 'rich_text'].includes(f.type)).map((f) => slot.data[f.key]).find((v) => typeof v === 'string' && v.trim() !== '');
+
+        return text ? text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 48) : '';
+    }
+
+    #renderStructure() {
+        const { structure } = this.#refs;
+
+        clear(structure);
+
+        this.#slots.forEach((slot, index) => {
+            const label = this.#labelOf(slot);
+            const summary = this.#summaryOf(slot);
+            const selected = slot.id === this.#selectedId;
+
+            structure.append(
+                h(
+                    'li',
+                    { class: `ome-structure-item${selected ? ' is-selected' : ''}`, 'data-id': slot.id },
+                    h(
+                        'button',
+                        { type: 'button', class: 'ome-structure-select', 'aria-current': selected ? 'true' : false, 'aria-label': `${label}${summary ? `: ${summary}` : ''}. Block ${index + 1} of ${this.#slots.length}.`, onclick: () => this.#select(slot.id) },
+                        h('span', { class: 'ome-structure-label' }, label),
+                        summary ? h('span', { class: 'ome-structure-summary' }, summary) : null,
+                    ),
+                    h(
+                        'span',
+                        { class: 'ome-structure-actions' },
+                        h('button', { type: 'button', 'data-action': 'up', class: 'ome-icon-button', 'aria-label': `Move ${label} up`, disabled: index === 0, onclick: () => this.#moveSlot(slot.id, -1) }, '↑'),
+                        h('button', { type: 'button', 'data-action': 'down', class: 'ome-icon-button', 'aria-label': `Move ${label} down`, disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(slot.id, 1) }, '↓'),
+                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Duplicate ${label}`, onclick: () => this.#duplicate(slot.id) }, '⧉'),
+                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Delete ${label}`, onclick: () => this.#remove(slot.id) }, '✕'),
+                    ),
+                ),
+            );
+        });
+    }
+
+    /** After a move from the list, keep keyboard focus on the same kind of button of the moved block. */
+    #focusStructure(id, action) {
+        const button = this.#refs.structure.querySelector(`[data-id="${id}"] [data-action="${action}"]:not(:disabled)`) ?? this.#refs.structure.querySelector(`[data-id="${id}"] .ome-structure-select`);
+
+        if (this.#refs.structure.contains(document.activeElement) || document.activeElement === document.body) {
+            button?.focus({ preventScroll: true });
+        }
+    }
+
+    #renderPanel() {
+        const { panel } = this.#refs;
+
+        clear(panel);
+
+        const slot = this.#slots.find((s) => s.id === this.#selectedId);
+
+        if (!slot) {
+            panel.append(h('h2', { class: 'ome-heading' }, 'Block settings'), h('p', { class: 'ome-help' }, 'Select a block in the email or in the structure list to change it.'));
+
+            return;
+        }
+
+        const slotSchema = this.#schema.get(slot.type);
+
+        panel.append(h('h2', { class: 'ome-heading' }, this.#labelOf(slot)));
+
+        if (!slotSchema) {
+            panel.append(h('p', { class: 'ome-help' }, 'This kind of block cannot be edited here yet. You can still move, duplicate and delete it, and its content is kept as it is.'));
+
+            return;
+        }
+
+        const options = (field) => ({
+            field,
+            value: slot.data[field.key],
+            path: [field.key],
+            idPrefix: `ome-${slot.id}`,
+            onChange: (path, value) => this.#changeField(slot.id, path, value),
+            onItem: (action, path, index) => this.#itemAction(slot.id, action, path, index),
+        });
+
+        panel.append(...slotSchema.fields.filter((f) => !f.advanced).map((f) => renderField(options(f))));
+
+        const advanced = slotSchema.fields.filter((f) => f.advanced);
+
+        if (advanced.length > 0) {
+            panel.append(h('details', { class: 'ome-advanced' }, h('summary', {}, 'Style options'), ...advanced.map((f) => renderField(options(f)))));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Dragging
+
+    #suppressClick = false;
+
+    /** Pressing a block in the preview selects it, and dragging it moves it. */
+    #boxPointerDown(event, id) {
+        if (event.button !== 0 && event.pointerType === 'mouse') {
+            return;
+        }
+
+        const slot = this.#slots.find((s) => s.id === id);
+
+        this.#startDrag(event, { kind: 'move', id, label: this.#labelOf(slot), selectOnClick: true });
+    }
+
+    #startDrag(event, payload) {
+        if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') {
+            return;
+        }
+
+        this.#endDrag(true);
+        this.#drag = { ...payload, startX: event.clientX, startY: event.clientY, active: false, index: null, pointerId: event.pointerId, source: event.currentTarget };
+
+        const move = (e) => this.#dragMove(e);
+        const up = (e) => this.#dragUp(e);
+        const cancel = () => this.#endDrag(true);
+        const key = (e) => {
+            if (e.key === 'Escape') {
+                this.#endDrag(true);
+            }
+        };
+
+        this.#drag.cleanup = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', cancel);
+            window.removeEventListener('keydown', key);
+        };
+
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+        window.addEventListener('pointercancel', cancel);
+        window.addEventListener('keydown', key);
+    }
+
+    #dragMove(event) {
+        const drag = this.#drag;
+
+        if (!drag) {
+            return;
+        }
+
+        if (!drag.active) {
+            if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_THRESHOLD_PX) {
+                return;
+            }
+
+            drag.active = true;
+            drag.ghost = h('div', { class: 'ome-ghost', 'aria-hidden': 'true' }, drag.label);
+            document.body.append(drag.ghost);
+            this.classList.add('is-dragging');
+        }
+
+        event.preventDefault();
+        drag.ghost.style.transform = `translate(${event.clientX + 14}px, ${event.clientY + 14}px)`;
+
+        const overlay = this.#refs.overlay.getBoundingClientRect();
+        const near = event.clientX > overlay.left - 40 && event.clientX < overlay.right + 40 && event.clientY > overlay.top - 40 && event.clientY < overlay.bottom + 40;
+
+        if (!near) {
+            drag.index = null;
+            this.#refs.drop.hidden = true;
+
+            return;
+        }
+
+        const rects = this.#rects.map((r) => ({ top: r.top, bottom: r.bottom }));
+
+        drag.index = insertionIndex(rects, event.clientY - overlay.top);
+        this.#refs.drop.hidden = false;
+        this.#refs.drop.style.top = `${dropLineY(rects, drag.index)}px`;
+        this.#autoScroll(event);
+    }
+
+    #autoScroll(event) {
+        if (event.clientY < SCROLL_EDGE_PX) {
+            window.scrollBy(0, -14);
+        } else if (event.clientY > window.innerHeight - SCROLL_EDGE_PX) {
+            window.scrollBy(0, 14);
+        }
+    }
+
+    #dragUp() {
+        const drag = this.#drag;
+
+        if (!drag) {
+            return;
+        }
+
+        const { active, index, kind } = drag;
+
+        this.#endDrag(false);
+
+        if (!active) {
+            // A press without movement: a click on a block selects it. (A click on the palette adds, in its own handler.)
+            if (drag.selectOnClick) {
+                this.#select(drag.id);
+            }
+
+            return;
+        }
+
+        // The click that follows a drag must not trigger the source button's own action.
+        this.#suppressClick = kind === 'new';
+        setTimeout(() => {
+            this.#suppressClick = false;
+        }, 0);
+
+        if (index === null) {
+            return;
+        }
+
+        if (kind === 'new') {
+            this.#insertNew(drag.type, index);
+        } else {
+            const next = moveTo(this.#slots, drag.id, index);
+
+            if (next !== this.#slots) {
+                this.#commit(next, { select: drag.id, announce: `${drag.label} moved to position ${indexOfSlot(next, drag.id) + 1} of ${next.length}.` });
+            }
+        }
+    }
+
+    #endDrag(cancelled) {
+        const drag = this.#drag;
+
+        if (!drag) {
+            return;
+        }
+
+        drag.cleanup?.();
+        drag.ghost?.remove();
+        this.classList.remove('is-dragging');
+        this.#refs.drop.hidden = true;
+        this.#drag = null;
+
+        if (cancelled && drag.active) {
+            this.#announce('Move cancelled.');
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Keyboard, messages
+
+    #handleKey(event) {
+        const typing = event.target instanceof HTMLElement && (event.target.matches('input, textarea, select') || event.target.isContentEditable);
+        const mod = event.metaKey || event.ctrlKey;
+
+        if (mod && event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            event.shiftKey ? this.#redo() : this.#undo();
+
+            return;
+        }
+
+        if (mod && event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            this.#redo();
+
+            return;
+        }
+
+        if (typing || this.#selectedId === null) {
+            return;
+        }
+
+        if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+            event.preventDefault();
+            this.#moveSlot(this.#selectedId, event.key === 'ArrowUp' ? -1 : 1);
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+            event.preventDefault();
+            this.#remove(this.#selectedId);
+        }
+    }
+
+    #announce(message) {
+        // Clearing first makes a repeated message be read again.
+        this.#refs.live.textContent = '';
+        setTimeout(() => {
+            this.#refs.live.textContent = message;
+        }, 30);
+    }
+
+    #setStatus(text) {
+        this.#refs.status.textContent = text;
+    }
+
+    #showError(message) {
+        this.#refs.error.hidden = !message;
+        this.#refs.error.textContent = message ?? '';
+    }
+}
+
+if (!customElements.get('odden-mail-editor')) {
+    customElements.define('odden-mail-editor', OddenMailEditor);
+}

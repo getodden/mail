@@ -20,6 +20,7 @@ Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://o
 - **WCAG 2.1 AA Contrast Auditor:** Exact mathematical relative luminance algorithm evaluating text and button contrast compliance.
 - **Enterprise Transport:** Send via `TemplateMailable` with RFC 8058 1-click unsubscribe headers, custom attachments, and automatic CID (Content-ID) inline image embedding.
 - **Filament Visual Builder:** Full Filament builder schema component with audience targeting and conditional visibility rules.
+- **Drag-and-Drop Editor:** A framework-free web component with a palette, a live preview rendered by the real compiler, undo and redo, and keyboard and screen reader support for every action.
 
 ---
 
@@ -251,6 +252,56 @@ A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, 
 
 Eight types are described so far: header, hero, body text, button, image banner, features, divider and footer. The rest are rendered by their views and edited with their Filament blocks as before, and are described one at a time. Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
 
+### 8. Drag-and-drop editor
+
+An editor for the slots, built as a web component with no framework: `<odden-mail-editor>`. It shows the email as it will be sent, with a palette of blocks, a structure list, and a settings panel for the selected block. Drag a block from the palette onto the email, or drag a block to move it. Every action also has a button and a keyboard shortcut, and changes are announced to screen readers. Undo and redo (Ctrl or Cmd + Z, Shift + Z) cover everything.
+
+The editor edits the slot document as data and never touches HTML. The server renders the preview with the same compiler that builds the email, so what you see is what is sent, and the preview cannot be broken by editing. Only the first eight slot types are editable so far (see the slot schema above). A slot of another type in the document is kept as it is: you can move, duplicate and delete it, and its preview is rendered.
+
+**1. Turn on the routes.** The editor needs two routes, a slot schema and a preview. They are off by default, because anyone who can reach them can render email HTML. Switch them on in `config/mail-builder.php` and set your own middleware:
+
+```php
+'editor' => [
+    'routes' => [
+        'enabled' => true,
+        'prefix' => 'admin/mail-editor',
+        'middleware' => ['web', 'auth'],   // your authentication and authorization
+    ],
+],
+```
+
+**2. Publish the editor files** (plain JavaScript modules and one stylesheet, no build step):
+
+```bash
+php artisan vendor:publish --tag=mail-builder-assets
+```
+
+**3. Use the element:**
+
+```html
+<script type="module" src="/vendor/mail-builder/editor/odden-mail-editor.js"></script>
+
+<odden-mail-editor id="editor"
+    schema-url="/admin/mail-editor/schema"
+    preview-url="/admin/mail-editor/preview"></odden-mail-editor>
+
+<script type="module">
+    const editor = document.getElementById('editor');
+
+    editor.value = { subject: 'News', slots: [{ type: 'hero', data: { title: 'Hello' } }] };
+    editor.addEventListener('change', (event) => console.log(event.detail));   // the new document
+</script>
+```
+
+- `value` is the document, in the shape `EmailDocument::fromArray()` takes: `{subject?, preview_text?, theme?, slots: [{type, data, visibility?}]}`. Keys other than `slots` are kept untouched.
+- The `change` event carries the new document. With a `name` attribute the element also keeps a hidden input in sync with the JSON, for a plain form post.
+- The page needs `<meta name="csrf-token">` for Laravel's CSRF check; the editor sends it as `X-CSRF-TOKEN`.
+- To talk to the server some other way, set `editor.adapter = { loadSchema(), preview(document) }`.
+
+The preview is rendered into a sandboxed iframe with scripts disabled, so a slot that holds HTML cannot run code in your admin page.
+
+To try it while developing the package: `vendor/bin/testbench serve`, then open the home page.
+
 ## Supported Slot Types (29 Total)
 
 | Slot Type | Key | Description |
@@ -293,6 +344,7 @@ Eight types are described so far: header, hero, body text, button, image banner,
 composer install
 composer test      # Pest, via Orchestra Testbench
 composer analyse   # PHPStan level 8 with Larastan
+npm run test:js    # the editor's model and history (Node's built-in test runner)
 ```
 
 ---
