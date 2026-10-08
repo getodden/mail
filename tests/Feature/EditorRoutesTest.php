@@ -10,6 +10,8 @@ class EditorRoutesTest extends TestCase
 {
     protected function defineEnvironment($app): void
     {
+        // The `web` middleware group encrypts cookies, which needs a key; CI's skeleton has none.
+        $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
         $app['config']->set('mail-builder.editor.routes.enabled', true);
         $app['config']->set('mail-builder.editor.max_slots', 3);
     }
