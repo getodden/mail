@@ -245,7 +245,7 @@ $schema = SlotSchemaRegistry::for(SlotType::Hero);   // null for a type that is 
 $schema->defaults();                                  // the data of a new hero slot
 $schema->basicFields();                               // the fields of the basic form
 
-return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs, with a "version"
+return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs: a "version", the described slots, and a "labels" map that names every slot type, also those not described yet
 ```
 
 A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
@@ -295,6 +295,7 @@ php artisan vendor:publish --tag=mail-builder-assets
 
 - `value` is the document, in the shape `EmailDocument::fromArray()` takes: `{subject?, preview_text?, theme?, slots: [{type, data, visibility?}]}`. Keys other than `slots` are kept untouched.
 - The `change` event carries the new document. With a `name` attribute the element also keeps a hidden input in sync with the JSON, for a plain form post.
+- The element's own `change` event is a `CustomEvent`; the browser's native `change` and `input` events from the fields inside the editor do not leave it, so a surrounding form never sees them.
 - The page needs `<meta name="csrf-token">` for Laravel's CSRF check; the editor sends it as `X-CSRF-TOKEN`.
 - To talk to the server some other way, set `editor.adapter = { loadSchema(), preview(document) }`.
 
@@ -311,8 +312,16 @@ use Odden\MailBuilder\Filament\Components\MailEditor;
 
 MailEditor::make('slots')
     ->label('Email content')
-    ->theme(['container_width' => 640]);   // optional: theme for the preview and the compiled email
+    ->theme(['container_width' => 640]);   // optional: the theme of the preview (see `mail-builder.defaults`)
 ```
+
+The theme can also be a closure, evaluated for every preview, so the preview follows the form. For example, with the theme's fields in the same form under `theme.*`:
+
+```php
+MailEditor::make('slots')->theme(fn (Get $get): array => $get('theme') ?? []);
+```
+
+The field's theme wins over a theme sent by the browser.
 
 - **No routes and no extra setup for the preview.** The field renders the preview itself, through Livewire, so it runs under the panel's own authentication and authorization. (The routes in section 8 are for use outside Filament.)
 - **Publish the assets** with Filament's own command, the first time and after an update: `php artisan filament:assets`.

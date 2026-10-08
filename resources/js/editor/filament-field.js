@@ -12,7 +12,7 @@ function toList(state) {
     return state && typeof state === 'object' ? Object.values(state) : [];
 }
 
-export default function oddenMailEditorField({ state, key, schema, theme, disabled }) {
+export default function oddenMailEditorField({ state, key, schema, disabled }) {
     return {
         state,
         lastEmitted: null,
@@ -25,9 +25,15 @@ export default function oddenMailEditorField({ state, key, schema, theme, disabl
                 preview: async (document) => this.$wire.callSchemaComponentMethod(key, 'renderPreview', { document }),
             };
 
-            editor.value = { ...(theme && Object.keys(theme).length > 0 ? { theme } : {}), slots: toList(this.state) };
+            // The theme is applied by the field on the server, with the form's current values, for every preview.
+            editor.value = { slots: toList(this.state) };
 
             editor.addEventListener('change', (event) => {
+                // Only the editor's own event carries the document; ignore anything else that reaches the element.
+                if (!(event instanceof CustomEvent) || !Array.isArray(event.detail?.slots)) {
+                    return;
+                }
+
                 const slots = event.detail.slots;
 
                 this.lastEmitted = JSON.stringify(slots);
@@ -42,7 +48,7 @@ export default function oddenMailEditorField({ state, key, schema, theme, disabl
                     return;
                 }
 
-                editor.value = { ...(theme && Object.keys(theme).length > 0 ? { theme } : {}), slots };
+                editor.value = { slots };
             });
 
             if (disabled) {

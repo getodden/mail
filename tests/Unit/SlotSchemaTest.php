@@ -130,6 +130,16 @@ class SlotSchemaTest extends TestCase
         $this->assertSame(2, $items['default_items']);
     }
 
+    public function test_every_slot_type_has_a_label_in_the_export_even_without_a_schema(): void
+    {
+        $labels = SlotSchemaRegistry::toArray()['labels'];
+
+        $this->assertCount(count(SlotType::cases()), $labels);
+        $this->assertSame('Customer Quote & Testimonial', $labels['testimonial']);
+        $this->assertSame(SlotType::Hero->label(), $labels['hero']);
+        $this->assertNull(SlotSchemaRegistry::for(SlotType::Testimonial));
+    }
+
     public function test_advanced_fields_are_marked_and_kept_out_of_the_basic_form(): void
     {
         $hero = SlotSchemaRegistry::for(SlotType::Hero);

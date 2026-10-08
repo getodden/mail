@@ -68,13 +68,22 @@ final class SlotSchemaRegistry
     /**
      * Everything an editor needs, ready to be sent as JSON.
      *
-     * @return array{version: int, slots: array<int, array<string, mixed>>}
+     * `labels` names every slot type, also the ones with no schema yet, so an editor can show a block it cannot edit.
+     *
+     * @return array{version: int, slots: array<int, array<string, mixed>>, labels: array<string, string>}
      */
     public static function toArray(): array
     {
+        $labels = [];
+
+        foreach (SlotType::cases() as $type) {
+            $labels[$type->value] = $type->label();
+        }
+
         return [
             'version' => self::VERSION,
             'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), self::all()),
+            'labels' => $labels,
         ];
     }
 

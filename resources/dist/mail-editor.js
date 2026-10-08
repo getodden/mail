@@ -585,6 +585,7 @@ function fetchAdapter(element) {
 class OddenMailEditor extends HTMLElement {
     #adapter = null;
     #schema = new Map();
+    #labels = {};
     #slots = [];
     #base = {};
     #selectedId = null;
@@ -739,6 +740,16 @@ class OddenMailEditor extends HTMLElement {
             refs.live,
         );
 
+        // The browser's own change and input events from the editor's fields stay inside it. A host's form must not take
+        // them for the editor's `change` event (a CustomEvent that carries the document), nor react to every keystroke.
+        for (const type of ['change', 'input']) {
+            root.addEventListener(type, (event) => {
+                if (!(event instanceof CustomEvent)) {
+                    event.stopPropagation();
+                }
+            });
+        }
+
         this.append(root);
         this.#built = true;
 
@@ -770,6 +781,8 @@ class OddenMailEditor extends HTMLElement {
             const schema = await this.#adapter.loadSchema();
 
             this.#schema = new Map(schema.slots.map((slotSchema) => [slotSchema.type, slotSchema]));
+            // A label for every slot type, so a block the editor cannot edit yet still has a readable name.
+            this.#labels = schema.labels ?? {};
         } catch (error) {
             this.#showError(error.message);
 
@@ -1147,7 +1160,7 @@ class OddenMailEditor extends HTMLElement {
     }
 
     #labelOf(slot) {
-        return this.#schema.get(slot.type)?.label ?? slot.type.replaceAll('_', ' ');
+        return this.#schema.get(slot.type)?.label ?? this.#labels[slot.type] ?? slot.type.replaceAll('_', ' ');
     }
 
     #summaryOf(slot) {
@@ -1463,7 +1476,7 @@ function toList(state) {
     return state && typeof state === 'object' ? Object.values(state) : [];
 }
 
-export default function oddenMailEditorField({ state, key, schema, theme, disabled }) {
+export default function oddenMailEditorField({ state, key, schema, disabled }) {
     return {
         state,
         lastEmitted: null,
@@ -1476,9 +1489,15 @@ export default function oddenMailEditorField({ state, key, schema, theme, disabl
                 preview: async (document) => this.$wire.callSchemaComponentMethod(key, 'renderPreview', { document }),
             };
 
-            editor.value = { ...(theme && Object.keys(theme).length > 0 ? { theme } : {}), slots: toList(this.state) };
+            // The theme is applied by the field on the server, with the form's current values, for every preview.
+            editor.value = { slots: toList(this.state) };
 
             editor.addEventListener('change', (event) => {
+                // Only the editor's own event carries the document; ignore anything else that reaches the element.
+                if (!(event instanceof CustomEvent) || !Array.isArray(event.detail?.slots)) {
+                    return;
+                }
+
                 const slots = event.detail.slots;
 
                 this.lastEmitted = JSON.stringify(slots);
@@ -1493,7 +1512,7 @@ export default function oddenMailEditorField({ state, key, schema, theme, disabl
                     return;
                 }
 
-                editor.value = { ...(theme && Object.keys(theme).length > 0 ? { theme } : {}), slots };
+                editor.value = { slots };
             });
 
             if (disabled) {

@@ -45,6 +45,7 @@ if (! class_exists('WorkbenchFilamentDemo')) {
                 ['type' => 'header', 'data' => ['brand_name' => 'Acme Studio', 'tagline' => 'Product updates']],
                 ['type' => 'hero', 'data' => ['title' => 'Edit me inside Filament', 'subtitle' => 'The form state is the same list of slots.']],
                 ['type' => 'body_text', 'data' => ['content' => '<p>Hello there.</p>']],
+                ['type' => 'testimonial', 'data' => ['quote' => 'A block the editor cannot edit yet is kept.', 'author' => 'Someone']],
             ]]);
         }
 
