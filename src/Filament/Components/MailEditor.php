@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Filament\Components;
 
+use Closure;
 use Filament\Forms\Components\Field;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 use Livewire\Attributes\Renderless;
@@ -22,15 +23,18 @@ class MailEditor extends Field
 {
     protected string $view = 'mail-builder::filament.mail-editor';
 
-    /** @var array<string, mixed> */
-    protected array $theme = [];
+    /** @var array<string, mixed>|Closure(): (array<string, mixed>|null) */
+    protected array|Closure $theme = [];
 
     /**
-     * Theme settings for the preview and for the compiled email (see `mail-builder.defaults`).
+     * Theme settings for the preview (see `mail-builder.defaults`): an array, or a closure that is evaluated for every
+     * preview, so it can follow the form. A closure may ask for `$get`:
      *
-     * @param  array<string, mixed>  $theme
+     *     ->theme(fn (Get $get): array => $get('theme') ?? [])
+     *
+     * @param  array<string, mixed>|Closure(): (array<string, mixed>|null)  $theme
      */
-    public function theme(array $theme): static
+    public function theme(array|Closure $theme): static
     {
         $this->theme = $theme;
 
@@ -42,7 +46,9 @@ class MailEditor extends Field
      */
     public function getTheme(): array
     {
-        return $this->theme;
+        $theme = $this->evaluate($this->theme);
+
+        return is_array($theme) ? $theme : [];
     }
 
     protected function setUp(): void
@@ -91,7 +97,8 @@ class MailEditor extends Field
     #[Renderless]
     public function renderPreview(array $document): string
     {
-        $document['theme'] = array_merge($this->theme, is_array($document['theme'] ?? null) ? $document['theme'] : []);
+        // The field's theme is applied on the server for every preview, so it wins over any theme the browser sent.
+        $document['theme'] = array_merge(is_array($document['theme'] ?? null) ? $document['theme'] : [], $this->getTheme());
 
         return app(PreviewRenderer::class)->render($document);
     }

@@ -13,7 +13,6 @@
             state: $wire.$entangle(@js($statePath)),
             key: @js($key),
             schema: @js(\Odden\MailBuilder\Schema\SlotSchemaRegistry::toArray()),
-            theme: @js($getTheme()),
             disabled: @js($isDisabled()),
         })"
     >

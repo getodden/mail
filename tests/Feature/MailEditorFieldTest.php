@@ -52,6 +52,37 @@ class MailEditorFieldTest extends TestCase
         $this->assertStringContainsString('max-width: 480px', $html);
     }
 
+    public function test_the_theme_can_be_a_closure_evaluated_for_each_preview(): void
+    {
+        $width = 480;
+        $field = MailEditor::make('slots')->theme(function () use (&$width): array {
+            return ['container_width' => $width];
+        });
+        $document = ['slots' => [['type' => 'divider', 'data' => []]]];
+
+        $this->assertStringContainsString('max-width: 480px', $field->renderPreview($document));
+
+        $width = 560;
+
+        $this->assertStringContainsString('max-width: 560px', $field->renderPreview($document));
+    }
+
+    public function test_the_fields_theme_wins_over_a_theme_the_browser_sent(): void
+    {
+        $html = MailEditor::make('slots')->theme(['container_width' => 480])->renderPreview([
+            'slots' => [['type' => 'divider', 'data' => []]],
+            'theme' => ['container_width' => 700, 'primary_color' => '#ff0000'],
+        ]);
+
+        $this->assertStringContainsString('max-width: 480px', $html);
+        $this->assertStringNotContainsString('max-width: 700px', $html);
+    }
+
+    public function test_a_closure_that_returns_nothing_means_no_theme(): void
+    {
+        $this->assertSame([], MailEditor::make('slots')->theme(fn (): ?array => null)->getTheme());
+    }
+
     public function test_the_preview_rejects_what_the_route_would_reject(): void
     {
         $this->expectException(ValidationException::class);

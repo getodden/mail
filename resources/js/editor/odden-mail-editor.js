@@ -67,6 +67,7 @@ function fetchAdapter(element) {
 export class OddenMailEditor extends HTMLElement {
     #adapter = null;
     #schema = new Map();
+    #labels = {};
     #slots = [];
     #base = {};
     #selectedId = null;
@@ -221,6 +222,16 @@ export class OddenMailEditor extends HTMLElement {
             refs.live,
         );
 
+        // The browser's own change and input events from the editor's fields stay inside it. A host's form must not take
+        // them for the editor's `change` event (a CustomEvent that carries the document), nor react to every keystroke.
+        for (const type of ['change', 'input']) {
+            root.addEventListener(type, (event) => {
+                if (!(event instanceof CustomEvent)) {
+                    event.stopPropagation();
+                }
+            });
+        }
+
         this.append(root);
         this.#built = true;
 
@@ -252,6 +263,8 @@ export class OddenMailEditor extends HTMLElement {
             const schema = await this.#adapter.loadSchema();
 
             this.#schema = new Map(schema.slots.map((slotSchema) => [slotSchema.type, slotSchema]));
+            // A label for every slot type, so a block the editor cannot edit yet still has a readable name.
+            this.#labels = schema.labels ?? {};
         } catch (error) {
             this.#showError(error.message);
 
@@ -629,7 +642,7 @@ export class OddenMailEditor extends HTMLElement {
     }
 
     #labelOf(slot) {
-        return this.#schema.get(slot.type)?.label ?? slot.type.replaceAll('_', ' ');
+        return this.#schema.get(slot.type)?.label ?? this.#labels[slot.type] ?? slot.type.replaceAll('_', ' ');
     }
 
     #summaryOf(slot) {
