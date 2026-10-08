@@ -4,6 +4,7 @@
     "type": "module",
     "description": "Tests for the drag-and-drop editor shipped in resources/js/editor.",
     "scripts": {
-        "test:js": "node --test tests/js/*.test.mjs"
+        "test:js": "node --test tests/js/*.test.mjs",
+        "build": "node scripts/build-editor.mjs"
     }
 }

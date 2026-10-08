@@ -302,6 +302,24 @@ The preview is rendered into a sandboxed iframe with scripts disabled, so a slot
 
 To try it while developing the package: `vendor/bin/testbench serve`, then open the home page.
 
+### 9. The editor as a Filament field
+
+`MailEditor` puts the drag-and-drop editor in a Filament form. It is a drop-in for `EmailSlotBuilder::make('slots')`: the state is the same list of slots (`{type, data}`), so it saves to the same column.
+
+```php
+use Odden\MailBuilder\Filament\Components\MailEditor;
+
+MailEditor::make('slots')
+    ->label('Email content')
+    ->theme(['container_width' => 640]);   // optional: theme for the preview and the compiled email
+```
+
+- **No routes and no extra setup for the preview.** The field renders the preview itself, through Livewire, so it runs under the panel's own authentication and authorization. (The routes in section 8 are for use outside Filament.)
+- **Publish the assets** with Filament's own command, the first time and after an update: `php artisan filament:assets`.
+- **State from either shape.** A column holding Filament's keyed Builder items or a plain list both load, and the field saves a plain list. Slots of a type that is not editable yet are kept as they are.
+- **It follows the form.** When the form changes the state itself, for example an action that applies a preset with `$set('slots', ...)`, the editor shows the new content.
+- A disabled field is shown but cannot be edited.
+
 ## Supported Slot Types (29 Total)
 
 | Slot Type | Key | Description |
