@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder;
 
+use Filament\Support\Assets\AlpineComponent;
+use Filament\Support\Assets\AssetManager;
+use Filament\Support\Assets\Css;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
@@ -63,6 +66,16 @@ class MailBuilderServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'mail-builder');
+
+        // With Filament installed, register the editor's files as Filament assets (published with `filament:assets`).
+        if (class_exists(AssetManager::class)) {
+            $this->callAfterResolving(AssetManager::class, function (AssetManager $assets): void {
+                $assets->register([
+                    AlpineComponent::make('odden-mail-editor', __DIR__.'/../resources/dist/mail-editor.js'),
+                    Css::make('odden-mail-editor', __DIR__.'/../resources/dist/mail-editor.css'),
+                ], 'getodden/mail');
+            });
+        }
 
         if ((bool) config('mail-builder.editor.routes.enabled', false)) {
             Route::middleware((array) config('mail-builder.editor.routes.middleware', ['web']))

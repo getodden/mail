@@ -3,6 +3,14 @@
 
 let counter = 0;
 
+/**
+ * A deep copy. The data is JSON by nature, and JSON also copies the reactive proxies a host framework may hand over
+ * (Alpine and Livewire state), which structuredClone refuses.
+ */
+function clone(value) {
+    return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
 /** A short id, unique within the page. Ids live only in the editor and are removed when the document is exported. */
 export function uid() {
     counter += 1;
@@ -46,10 +54,10 @@ export function fromDocument(document) {
     const slots = Array.isArray(document?.slots) ? document.slots : [];
 
     return slots.map((slot) => {
-        const next = { id: uid(), type: slot.type, data: structuredClone(slot.data ?? {}) };
+        const next = { id: uid(), type: slot.type, data: clone(slot.data ?? {}) };
 
         if (slot.visibility) {
-            next.visibility = structuredClone(slot.visibility);
+            next.visibility = clone(slot.visibility);
         }
 
         return next;
@@ -61,10 +69,10 @@ export function toDocument(slots, base = {}) {
     return {
         ...base,
         slots: slots.map((slot) => {
-            const out = { type: slot.type, data: structuredClone(slot.data) };
+            const out = { type: slot.type, data: clone(slot.data) };
 
             if (slot.visibility) {
-                out.visibility = structuredClone(slot.visibility);
+                out.visibility = clone(slot.visibility);
             }
 
             return out;
@@ -127,7 +135,7 @@ export function duplicateSlot(slots, id) {
         return { slots, copy: null };
     }
 
-    const copy = { ...structuredClone(slots[from]), id: uid() };
+    const copy = { ...clone(slots[from]), id: uid() };
 
     return { slots: insertAt(slots, from + 1, copy), copy };
 }
@@ -142,7 +150,7 @@ export function setField(slots, id, path, value) {
             return slot;
         }
 
-        const data = structuredClone(slot.data);
+        const data = clone(slot.data);
         let target = data;
 
         for (const step of path.slice(0, -1)) {

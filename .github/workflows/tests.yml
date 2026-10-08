@@ -97,5 +97,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Test the editor's model and history
+      - name: Test the editor's model, history and bundle
         run: npm run test:js
+
+      - name: Check the bundled editor is up to date
+        run: node scripts/build-editor.mjs --check

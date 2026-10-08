@@ -1,0 +1,530 @@
+/* The drag-and-drop email editor. Everything is scoped to .ome, so it does not touch the host app's styles. */
+
+odden-mail-editor {
+    display: block;
+}
+
+.ome {
+    --ome-ink: #1e293b;
+    --ome-muted: #64748b;
+    --ome-line: #e2e8f0;
+    --ome-surface: #ffffff;
+    --ome-canvas: #f1f5f9;
+    --ome-accent: #7c3aed;
+    --ome-accent-soft: rgba(124, 58, 237, 0.1);
+    --ome-danger: #b91c1c;
+
+    color: var(--ome-ink);
+    color-scheme: light;
+    display: flex;
+    flex-direction: column;
+    background: var(--ome-surface);
+    border: 1px solid var(--ome-line);
+    border-radius: 12px;
+    font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    min-height: 560px;
+    overflow: hidden;
+}
+
+.ome *,
+.ome *::before,
+.ome *::after {
+    box-sizing: border-box;
+}
+
+.ome-bar {
+    align-items: center;
+    background: var(--ome-surface);
+    border-bottom: 1px solid var(--ome-line);
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+}
+
+.ome-divider {
+    background: var(--ome-line);
+    height: 20px;
+    width: 1px;
+}
+
+.ome-status {
+    color: var(--ome-muted);
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.ome-body {
+    display: grid;
+    flex: 1;
+    grid-template-columns: 240px minmax(0, 1fr) 320px;
+    min-height: 0;
+}
+
+.ome-left,
+.ome-right {
+    background: var(--ome-surface);
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.ome-left {
+    border-right: 1px solid var(--ome-line);
+}
+
+.ome-right {
+    border-left: 1px solid var(--ome-line);
+}
+
+.ome-heading {
+    color: var(--ome-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin: 4px 0 8px;
+    text-transform: uppercase;
+}
+
+.ome-heading:not(:first-child) {
+    margin-top: 18px;
+}
+
+.ome-canvas {
+    background: var(--ome-canvas);
+    min-width: 0;
+    overflow: auto;
+    padding: 20px;
+}
+
+/* Buttons */
+
+.ome-button,
+.ome-icon-button,
+.ome-palette-item,
+.ome-structure-select,
+.ome-handle {
+    background: var(--ome-surface);
+    border: 1px solid var(--ome-line);
+    border-radius: 8px;
+    color: var(--ome-ink);
+    cursor: pointer;
+    font: inherit;
+}
+
+.ome-button {
+    min-height: 32px;
+    padding: 4px 12px;
+}
+
+.ome-button[aria-pressed='true'] {
+    background: var(--ome-accent-soft);
+    border-color: var(--ome-accent);
+    color: var(--ome-accent);
+}
+
+.ome-button-quiet {
+    margin-top: 6px;
+}
+
+.ome-icon-button {
+    align-items: center;
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    min-width: 28px;
+    padding: 0;
+}
+
+.ome-button:hover:not(:disabled),
+.ome-icon-button:hover:not(:disabled),
+.ome-palette-item:hover,
+.ome-structure-select:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.ome button:disabled {
+    cursor: default;
+    opacity: 0.4;
+}
+
+.ome :focus-visible {
+    outline: 2px solid var(--ome-accent);
+    outline-offset: 2px;
+}
+
+/* Palette */
+
+.ome-palette {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: 1fr;
+}
+
+.ome-palette-item {
+    align-items: center;
+    cursor: grab;
+    display: flex;
+    gap: 8px;
+    min-height: 34px;
+    padding: 4px 10px;
+    text-align: left;
+    touch-action: none;
+    user-select: none;
+}
+
+.ome-palette-glyph {
+    color: var(--ome-accent);
+    font-weight: 700;
+}
+
+/* Structure list */
+
+.ome-structure {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ome-structure-item {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.ome-structure-item.is-selected {
+    background: var(--ome-accent-soft);
+    border-color: var(--ome-accent);
+}
+
+.ome-structure-select {
+    background: transparent;
+    border: 0;
+    display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+    min-height: 34px;
+    min-width: 0;
+    padding: 4px 8px;
+    text-align: left;
+}
+
+.ome-structure-label {
+    font-weight: 600;
+}
+
+.ome-structure-summary {
+    color: var(--ome-muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ome-structure-actions {
+    display: none;
+    gap: 2px;
+    justify-content: flex-end;
+    padding: 0 4px 4px;
+    width: 100%;
+}
+
+.ome-structure-item.is-selected .ome-structure-actions,
+.ome-structure-item:focus-within .ome-structure-actions {
+    display: flex;
+}
+
+/* Canvas */
+
+.ome-stage {
+    margin: 0 auto;
+    max-width: 720px;
+    min-height: 120px;
+    position: relative;
+    width: 100%;
+}
+
+.ome-stage[data-device='mobile'] {
+    max-width: 375px;
+}
+
+.ome-iframe {
+    background: #fff;
+    border: 0;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+    display: block;
+    width: 100%;
+}
+
+.ome-overlay {
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+}
+
+.ome-box {
+    border-radius: 2px;
+    cursor: pointer;
+    outline: 2px solid transparent;
+    outline-offset: -2px;
+    pointer-events: auto;
+    position: absolute;
+    touch-action: none;
+}
+
+.ome-box:hover {
+    outline-color: rgba(124, 58, 237, 0.45);
+}
+
+.ome-box.is-selected {
+    background: rgba(124, 58, 237, 0.05);
+    outline-color: var(--ome-accent);
+}
+
+.ome-slot-toolbar {
+    align-items: center;
+    background: var(--ome-surface);
+    border: 1px solid var(--ome-accent);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+    display: flex;
+    gap: 4px;
+    padding: 2px 4px;
+    pointer-events: auto;
+    position: absolute;
+    z-index: 5;
+}
+
+.ome-slot-toolbar[hidden] {
+    display: none;
+}
+
+.ome-slot-name {
+    font-size: 12px;
+    font-weight: 600;
+    max-width: 180px;
+    overflow: hidden;
+    padding: 0 4px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ome-handle {
+    cursor: grab;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    touch-action: none;
+}
+
+.ome-drop {
+    background: var(--ome-accent);
+    border-radius: 2px;
+    height: 4px;
+    left: 0;
+    margin-top: -2px;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    z-index: 6;
+}
+
+.ome-drop[hidden] {
+    display: none;
+}
+
+.ome-ghost {
+    background: var(--ome-accent);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+    color: #fff;
+    font: 600 13px/1 system-ui, sans-serif;
+    left: 0;
+    padding: 8px 12px;
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    z-index: 2147483647;
+}
+
+.ome.is-dragging,
+odden-mail-editor.is-dragging .ome {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.ome-empty {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    color: var(--ome-muted);
+    margin: 0 auto 16px;
+    max-width: 720px;
+    padding: 40px 16px;
+    text-align: center;
+}
+
+.ome-empty[hidden],
+.ome-error[hidden] {
+    display: none;
+}
+
+.ome-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: var(--ome-danger);
+    margin: 0 auto 12px;
+    max-width: 720px;
+    padding: 8px 12px;
+}
+
+/* Property panel */
+
+.ome-panel .ome-heading:first-child {
+    color: var(--ome-ink);
+    font-size: 14px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.ome-field {
+    margin: 0 0 12px;
+}
+
+.ome-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.ome-required {
+    color: var(--ome-danger);
+}
+
+.ome-input {
+    background: var(--ome-surface);
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: var(--ome-ink);
+    font: inherit;
+    min-height: 34px;
+    padding: 6px 10px;
+    width: 100%;
+}
+
+.ome-textarea {
+    resize: vertical;
+}
+
+.ome-help {
+    color: var(--ome-muted);
+    font-size: 12px;
+    margin: 4px 0 0;
+}
+
+.ome-field-toggle {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ome-field-toggle .ome-label {
+    margin: 0;
+    order: 2;
+}
+
+.ome-field-toggle .ome-help {
+    order: 3;
+    width: 100%;
+}
+
+.ome-switch {
+    height: 20px;
+    margin: 0;
+    order: 1;
+    width: 20px;
+}
+
+.ome-color-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.ome-color {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    height: 34px;
+    padding: 2px;
+    width: 44px;
+}
+
+.ome-items {
+    border: 0;
+    margin: 0 0 12px;
+    min-width: 0;
+    padding: 0;
+}
+
+.ome-item {
+    background: #f8fafc;
+    border: 1px solid var(--ome-line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 8px;
+}
+
+.ome-item-bar {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.ome-item-title {
+    flex: 1;
+    font-weight: 600;
+}
+
+.ome-advanced {
+    border-top: 1px solid var(--ome-line);
+    margin-top: 12px;
+    padding-top: 8px;
+}
+
+.ome-advanced summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 8px;
+    min-height: 28px;
+}
+
+.ome-sr-only {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+@media (max-width: 960px) {
+    .ome-body {
+        grid-template-columns: 1fr;
+    }
+
+    .ome-left,
+    .ome-right {
+        border: 0;
+        border-bottom: 1px solid var(--ome-line);
+    }
+}
+

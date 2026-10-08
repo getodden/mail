@@ -1,8 +1,17 @@
 providers:
   - Odden\MailBuilder\MailBuilderServiceProvider
+  - Livewire\LivewireServiceProvider
+  - BladeUI\Icons\BladeIconsServiceProvider
+  - BladeUI\Heroicons\BladeHeroiconsServiceProvider
+  - Filament\Support\SupportServiceProvider
+  - Filament\Actions\ActionsServiceProvider
+  - Filament\Forms\FormsServiceProvider
+  - Filament\Notifications\NotificationsServiceProvider
+  - Filament\Schemas\SchemasServiceProvider
 
 env:
   - MAIL_BUILDER_EDITOR_ROUTES=true
+  - CACHE_STORE=array
 
 workbench:
   start: /

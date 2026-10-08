@@ -46,6 +46,15 @@ test('a document round-trips without ids and keeps visibility rules and other ke
     assert.deepEqual(toDocument(slots, { subject: 'Hi' }), document);
 });
 
+test('a document handed over as a proxy is copied, not shared', () => {
+    const handler = { get: (target, key) => target[key] };
+    const proxied = new Proxy({ slots: [{ type: 'hero', data: new Proxy({ title: 'A' }, handler) }] }, handler);
+    const slots = fromDocument(proxied);
+
+    assert.deepEqual(slots[0].data, { title: 'A' });
+    assert.doesNotThrow(() => toDocument(slots));
+});
+
 test('inserting clamps the position', () => {
     const list = [slot('a'), slot('b')];
 
