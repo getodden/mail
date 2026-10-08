@@ -23,7 +23,7 @@ class MailEditor extends Field
 {
     protected string $view = 'mail-builder::filament.mail-editor';
 
-    /** @var array<string, mixed>|Closure(): (array<string, mixed>|null) */
+    /** @var array<string, mixed>|Closure */
     protected array|Closure $theme = [];
 
     /**
@@ -32,7 +32,7 @@ class MailEditor extends Field
      *
      *     ->theme(fn (Get $get): array => $get('theme') ?? [])
      *
-     * @param  array<string, mixed>|Closure(): (array<string, mixed>|null)  $theme
+     * @param  array<string, mixed>|Closure  $theme  A closure may take any of Filament's injected parameters (`$get`, `$record`, ...) and returns the theme array (or null for none).
      */
     public function theme(array|Closure $theme): static
     {
