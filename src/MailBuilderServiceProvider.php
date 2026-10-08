@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder;
 
+use Illuminate\Support\ServiceProvider;
 use Odden\MailBuilder\Audit\EmailPreFlightAuditor;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Compilers\PlainTextExtractor;
@@ -12,7 +13,6 @@ use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
 use Odden\MailBuilder\MergeTags\MergeTagRegistry;
 use Odden\MailBuilder\Presets\PresetRegistry;
 use Odden\MailBuilder\Tracking\EmailTrackingPipeline;
-use Illuminate\Support\ServiceProvider;
 
 class MailBuilderServiceProvider extends ServiceProvider
 {
