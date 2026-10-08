@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Mail;
 
-use Odden\MailBuilder\Data\EmailDocument;
-use Odden\MailBuilder\MailBuilder;
-use Odden\MailBuilder\Transport\CidImageEmbedder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -15,6 +12,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
+use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\MailBuilder;
+use Odden\MailBuilder\Transport\CidImageEmbedder;
 
 class TemplateMailable extends Mailable
 {

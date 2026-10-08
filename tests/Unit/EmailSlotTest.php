@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Tests\Unit;
 
+use InvalidArgumentException;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\ButtonStyle;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Tests\TestCase;
-use InvalidArgumentException;
 
 class EmailSlotTest extends TestCase
 {

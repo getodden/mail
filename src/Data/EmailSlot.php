@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Data;
 
-use Odden\MailBuilder\Enums\SlotType;
 use Illuminate\Support\Arr;
 use InvalidArgumentException;
+use Odden\MailBuilder\Enums\SlotType;
 
 class EmailSlot
 {

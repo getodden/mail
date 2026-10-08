@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Conditions;
 
-use Odden\MailBuilder\Data\EmailSlot;
 use Illuminate\Support\Arr;
+use Odden\MailBuilder\Data\EmailSlot;
 
 class SlotVisibilityEvaluator
 {

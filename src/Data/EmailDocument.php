@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Data;
 
-use Odden\MailBuilder\Compilers\EmailSlotCompiler;
-use Odden\MailBuilder\Compilers\PlainTextExtractor;
-use Odden\MailBuilder\Enums\SlotType;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 use JsonSerializable;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Enums\SlotType;
 
 /**
  * @implements Arrayable<string, mixed>
