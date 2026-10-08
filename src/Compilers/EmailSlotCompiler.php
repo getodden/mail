@@ -45,13 +45,18 @@ class EmailSlotCompiler
         $inlineCss = (bool) ($options['inline_css'] ?? true);
         $interpolate = (bool) ($options['interpolate'] ?? false);
 
+        $editorMarkers = (bool) ($options['editor_markers'] ?? false);
+
         $slotsHtml = '';
-        foreach ($document->slots as $slot) {
+        foreach ($document->slots as $index => $slot) {
             if ($context !== null && ! $slot->matchesContext($context)) {
                 continue;
             }
 
-            $slotsHtml .= $this->compileSlot($slot, $theme);
+            $compiled = $this->compileSlot($slot, $theme);
+
+            // The drag-and-drop editor finds each slot in the preview by this marker. Never set it for a real send.
+            $slotsHtml .= $editorMarkers ? '<div data-odden-slot="'.$index.'">'.$compiled.'</div>' : $compiled;
         }
 
         $previewText = $document->previewText;

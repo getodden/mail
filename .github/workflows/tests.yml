@@ -83,3 +83,19 @@ jobs:
 
       - name: Pint
         run: vendor/bin/pint --test
+
+  editor:
+    name: Editor (JavaScript)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test the editor's model and history
+        run: npm run test:js

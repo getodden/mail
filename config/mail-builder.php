@@ -36,4 +36,24 @@ return [
         'address' => env('MAIL_BUILDER_ADDRESS', ''),
         'unsubscribe_text' => 'Unsubscribe or manage your email preferences',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Drag-and-Drop Editor
+    |--------------------------------------------------------------------------
+    |
+    | The editor (the <odden-mail-editor> element) loads the slot schema and renders its preview through two routes.
+    | They are off by default: turn them on, and put your own authentication and authorization in the middleware.
+    | Anyone who can reach them can render email HTML, so never leave them public.
+    |
+    */
+    'editor' => [
+        'routes' => [
+            'enabled' => (bool) env('MAIL_BUILDER_EDITOR_ROUTES', false),
+            'prefix' => env('MAIL_BUILDER_EDITOR_PREFIX', 'mail-builder/editor'),
+            'middleware' => ['web'],
+        ],
+        // The most slots a preview request may render.
+        'max_slots' => 200,
+    ],
 ];
