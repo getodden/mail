@@ -4,17 +4,11 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Filament\Components;
 
-use Odden\MailBuilder\Compilers\EmailSlotCompiler;
-use Odden\MailBuilder\Compilers\PlainTextExtractor;
-use Odden\MailBuilder\Enums\ButtonStyle;
-use Odden\MailBuilder\Enums\SlotType;
-use Odden\MailBuilder\Presets\PresetRegistry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
@@ -23,6 +17,10 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Support\Icons\Heroicon;
+use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Compilers\PlainTextExtractor;
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Presets\PresetRegistry;
 
 class EmailSlotBuilder
 {
@@ -74,28 +72,7 @@ class EmailSlotBuilder
      */
     public static function getHeaderBlock(): Block
     {
-        return Block::make(SlotType::Header->value)
-            ->label(SlotType::Header->label())
-            ->icon(Heroicon::GlobeAlt)
-            ->schema([
-                TextInput::make('brand_name')
-                    ->label('Brand / Company Name')
-                    ->default(fn (): string => (string) config('mail-builder.footer.company_name', config('app.name')))
-                    ->required(),
-                TextInput::make('tagline')
-                    ->label('Tagline or Category')
-                    ->placeholder('e.g. Next-Gen Marketing Engine'),
-                TextInput::make('logo_url')
-                    ->label('Logo Image URL')
-                    ->placeholder('https://example.com/logo.png'),
-                Toggle::make('show_date')
-                    ->label('Display Current Date')
-                    ->default(false),
-                TextInput::make('web_view_url')
-                    ->label('Web View Link URL')
-                    ->placeholder('https://example.com/emails/view/{{campaign.id}}'),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::Header);
     }
 
     /**
@@ -103,45 +80,7 @@ class EmailSlotBuilder
      */
     public static function getHeroBlock(): Block
     {
-        return Block::make(SlotType::Hero->value)
-            ->label(SlotType::Hero->label())
-            ->icon(Heroicon::Sparkles)
-            ->schema([
-                TextInput::make('title')
-                    ->label('Hero Headline')
-                    ->placeholder('e.g. Announcing Something Big 🚀')
-                    ->required()
-                    ->columnSpanFull(),
-                Textarea::make('subtitle')
-                    ->label('Hero Subtitle / Description')
-                    ->rows(2)
-                    ->columnSpanFull(),
-                TextInput::make('badge')
-                    ->label('Badge Pill (Optional)')
-                    ->placeholder('e.g. NEW FEATURE'),
-                Select::make('button_style')
-                    ->label('Button Color Theme')
-                    ->options([
-                        'primary' => 'Primary Brand Color',
-                        'success' => 'Success Green',
-                        'dark' => 'Deep Navy / Dark',
-                        'light' => 'Clean White',
-                    ])
-                    ->default('primary'),
-                TextInput::make('button_text')
-                    ->label('Hero CTA Button Text')
-                    ->placeholder('e.g. Explore Now'),
-                TextInput::make('button_url')
-                    ->label('Hero CTA Destination URL')
-                    ->placeholder('https://...'),
-                ColorPicker::make('bg_color')
-                    ->label('Background Color')
-                    ->default('#0f172a'),
-                ColorPicker::make('text_color')
-                    ->label('Headline Text Color')
-                    ->default('#ffffff'),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::Hero);
     }
 
     /**
@@ -149,25 +88,7 @@ class EmailSlotBuilder
      */
     public static function getBodyTextBlock(): Block
     {
-        return Block::make(SlotType::BodyText->value)
-            ->label(SlotType::BodyText->label())
-            ->icon(Heroicon::DocumentText)
-            ->schema([
-                RichEditor::make('content')
-                    ->label('Content Body')
-                    ->helperText('Supports merge tags: {{contact.first_name}}, {{company.name}}, etc.')
-                    ->required()
-                    ->columnSpanFull(),
-                Select::make('align')
-                    ->label('Text Alignment')
-                    ->options([
-                        'left' => 'Left',
-                        'center' => 'Center',
-                        'right' => 'Right',
-                    ])
-                    ->default('left'),
-                self::getVisibilityFieldset()->columnSpanFull(),
-            ]);
+        return SchemaBlockFactory::make(SlotType::BodyText);
     }
 
     /**
@@ -175,40 +96,7 @@ class EmailSlotBuilder
      */
     public static function getButtonBlock(): Block
     {
-        return Block::make(SlotType::Button->value)
-            ->label(SlotType::Button->label())
-            ->icon(Heroicon::CursorArrowRays)
-            ->schema([
-                TextInput::make('text')
-                    ->label('Button Label')
-                    ->default('Get Started Now')
-                    ->required(),
-                TextInput::make('url')
-                    ->label('Target URL')
-                    ->default('https://example.com')
-                    ->required(),
-                Select::make('style')
-                    ->label('Button Color Theme')
-                    ->options([
-                        ButtonStyle::Primary->value => 'Primary Brand Blue',
-                        ButtonStyle::Success->value => 'Success Green',
-                        ButtonStyle::Dark->value => 'Dark Charcoal',
-                        ButtonStyle::Secondary->value => 'Slate Gray',
-                        ButtonStyle::Danger->value => 'Crimson Danger',
-                        ButtonStyle::Outline->value => 'Clean Outline Border',
-                    ])
-                    ->default(ButtonStyle::Primary->value),
-                Select::make('align')
-                    ->label('Button Placement')
-                    ->options([
-                        'center' => 'Center (Recommended)',
-                        'left' => 'Left Aligned',
-                        'right' => 'Right Aligned',
-                    ])
-                    ->default('center'),
-                self::getVisibilityFieldset()->columnSpanFull(),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::Button);
     }
 
     /**
@@ -261,33 +149,7 @@ class EmailSlotBuilder
      */
     public static function getFeaturesBlock(): Block
     {
-        return Block::make(SlotType::Features->value)
-            ->label(SlotType::Features->label())
-            ->icon(Heroicon::CheckCircle)
-            ->schema([
-                TextInput::make('heading')
-                    ->label('Features Section Heading')
-                    ->placeholder('Why choose us?'),
-                Repeater::make('items')
-                    ->label('Feature Items')
-                    ->schema([
-                        TextInput::make('icon')
-                            ->label('Icon / Emoji')
-                            ->default('⚡')
-                            ->required(),
-                        TextInput::make('title')
-                            ->label('Item Title')
-                            ->required(),
-                        Textarea::make('text')
-                            ->label('Description')
-                            ->rows(2)
-                            ->required(),
-                    ])
-                    ->columns(3)
-                    ->collapsible()
-                    ->defaultItems(2)
-                    ->columnSpanFull(),
-            ]);
+        return SchemaBlockFactory::make(SlotType::Features);
     }
 
     /**
@@ -363,24 +225,7 @@ class EmailSlotBuilder
      */
     public static function getDividerBlock(): Block
     {
-        return Block::make(SlotType::Divider->value)
-            ->label(SlotType::Divider->label())
-            ->icon(Heroicon::Minus)
-            ->schema([
-                Select::make('height')
-                    ->label('Spacer Height')
-                    ->options([
-                        16 => 'Small (16px)',
-                        24 => 'Medium (24px)',
-                        36 => 'Large (36px)',
-                        48 => 'Extra Large (48px)',
-                    ])
-                    ->default(24),
-                Toggle::make('show_line')
-                    ->label('Draw Horizontal Divider Line')
-                    ->default(true),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::Divider);
     }
 
     /**
@@ -423,27 +268,7 @@ class EmailSlotBuilder
      */
     public static function getFooterBlock(): Block
     {
-        return Block::make(SlotType::Footer->value)
-            ->label(SlotType::Footer->label())
-            ->icon(Heroicon::InformationCircle)
-            ->schema([
-                TextInput::make('company_name')
-                    ->label('Legal Entity / Company Name')
-                    ->default(fn (): string => (string) config('mail-builder.footer.company_name', config('app.name')))
-                    ->required(),
-                TextInput::make('address')
-                    ->label('Physical Mailing Address')
-                    ->placeholder('123 Example St, Springfield')
-                    ->required(),
-                TextInput::make('notice')
-                    ->label('Permission Notice')
-                    ->placeholder('You are receiving this because you signed up on example.com'),
-                TextInput::make('unsubscribe_url')
-                    ->label('Unsubscribe URL / Merge Tag')
-                    ->default('{{unsubscribe_url}}')
-                    ->required(),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::Footer);
     }
 
     /**
@@ -468,40 +293,7 @@ class EmailSlotBuilder
      */
     public static function getImageBannerBlock(): Block
     {
-        return Block::make(SlotType::ImageBanner->value)
-            ->label(SlotType::ImageBanner->label())
-            ->icon(Heroicon::Photo)
-            ->schema([
-                TextInput::make('image_url')
-                    ->label('Image URL')
-                    ->placeholder('https://images.unsplash.com/...')
-                    ->required()
-                    ->columnSpanFull(),
-                TextInput::make('alt_text')
-                    ->label('Accessibility Alt Text')
-                    ->placeholder('Describe image for screen readers and deliverability')
-                    ->required(),
-                TextInput::make('link_url')
-                    ->label('Destination Link URL (Optional)')
-                    ->placeholder('https://...'),
-                TextInput::make('caption')
-                    ->label('Caption Text (Optional)')
-                    ->placeholder('Small caption below image'),
-                Select::make('border_radius')
-                    ->label('Corner Style')
-                    ->options([
-                        '0px' => 'Sharp (0px)',
-                        '4px' => 'Subtle (4px)',
-                        '8px' => 'Rounded (8px)',
-                        '16px' => 'Pill / Soft (16px)',
-                    ])
-                    ->default('8px'),
-                Toggle::make('full_width')
-                    ->label('Edge-to-Edge Full Width (No Inset Margin)')
-                    ->default(false),
-                self::getVisibilityFieldset()->columnSpanFull(),
-            ])
-            ->columns(2);
+        return SchemaBlockFactory::make(SlotType::ImageBanner);
     }
 
     /**

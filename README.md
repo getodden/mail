@@ -232,6 +232,25 @@ public static function form(Schema $schema): Schema
 
 ---
 
+### 7. Slot schema (for editors)
+
+Each slot type can describe itself: which fields its `data` takes, how to label and edit them, and the default of each. The Filament form is generated from this description, and a drag-and-drop editor can read it as JSON, so the two always agree with the slot's view.
+
+```php
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\SlotSchemaRegistry;
+
+$schema = SlotSchemaRegistry::for(SlotType::Hero);   // null for a type that is not described yet
+$schema->defaults();                                  // the data of a new hero slot
+$schema->basicFields();                               // the fields of the basic form
+
+return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs, with a "version"
+```
+
+A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
+
+Eight types are described so far: header, hero, body text, button, image banner, features, divider and footer. The rest are rendered by their views and edited with their Filament blocks as before, and are described one at a time. Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
+
 ## Supported Slot Types (29 Total)
 
 | Slot Type | Key | Description |
