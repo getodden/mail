@@ -39,3 +39,28 @@ export function clear(element) {
         element.removeChild(element.firstChild);
     }
 }
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** A decorative 24x24 outline icon from path data (the `d` of each path). */
+export function icon(paths) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.5');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    for (const d of paths) {
+        const path = document.createElementNS(SVG_NS, 'path');
+
+        path.setAttribute('d', d);
+        svg.append(path);
+    }
+
+    return svg;
+}

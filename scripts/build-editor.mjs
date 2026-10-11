@@ -13,7 +13,7 @@ const source = join(root, 'resources/js/editor');
 const dist = join(root, 'resources/dist');
 
 // Dependency order: a module comes after the modules it imports.
-const MODULES = ['dom.js', 'model.js', 'history.js', 'fields.js', 'odden-mail-editor.js', 'filament-field.js'];
+const MODULES = ['dom.js', 'model.js', 'history.js', 'fields.js', 'icons.js', 'odden-mail-editor.js', 'filament-field.js'];
 
 /** Remove `import ... from '...';` (also over several lines) and the `export` keywords, keeping `export default`. */
 export function strip(code, file) {

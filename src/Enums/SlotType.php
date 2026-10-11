@@ -71,6 +71,77 @@ enum SlotType: string
         };
     }
 
+    /** A name short enough for a tile in an editor's block palette. */
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::Header => 'Header',
+            self::Hero => 'Hero',
+            self::BodyText => 'Text',
+            self::Button => 'Button',
+            self::TwoColumn => '2 columns',
+            self::Features => 'Features',
+            self::Testimonial => 'Quote',
+            self::StatBox => 'Key metrics',
+            self::Divider => 'Divider',
+            self::SocialLinks => 'Social links',
+            self::Footer => 'Footer',
+            self::Html => 'Custom HTML',
+            self::ImageBanner => 'Image',
+            self::VideoCard => 'Video',
+            self::PricingGrid => 'Pricing',
+            self::RatingBar => 'Rating',
+            self::CountdownTimer => 'Countdown',
+            self::Accordion => 'FAQ',
+            self::DynamicFeed => 'Product feed',
+            self::OrderReceipt => 'Receipt',
+            self::RssFeed => 'Articles',
+            self::ThreeColumn => '3 columns',
+            self::FourColumn => 'Logo wall',
+            self::AsymmetricColumns => 'Sidebar split',
+            self::ProductCatalog => 'Catalog',
+            self::CouponCode => 'Coupon',
+            self::AppBadges => 'App badges',
+            self::DataTable => 'Table',
+            self::LabeledDivider => 'Section label',
+        };
+    }
+
+    public function group(): SlotGroup
+    {
+        return match ($this) {
+            self::Header => SlotGroup::Structure,
+            self::Footer => SlotGroup::Structure,
+            self::Divider => SlotGroup::Structure,
+            self::LabeledDivider => SlotGroup::Structure,
+            self::Hero => SlotGroup::Content,
+            self::BodyText => SlotGroup::Content,
+            self::Button => SlotGroup::Content,
+            self::ImageBanner => SlotGroup::Content,
+            self::Features => SlotGroup::Content,
+            self::Testimonial => SlotGroup::Content,
+            self::Accordion => SlotGroup::Content,
+            self::VideoCard => SlotGroup::Content,
+            self::Html => SlotGroup::Content,
+            self::TwoColumn => SlotGroup::Layout,
+            self::ThreeColumn => SlotGroup::Layout,
+            self::FourColumn => SlotGroup::Layout,
+            self::AsymmetricColumns => SlotGroup::Layout,
+            self::PricingGrid => SlotGroup::Commerce,
+            self::ProductCatalog => SlotGroup::Commerce,
+            self::DynamicFeed => SlotGroup::Commerce,
+            self::OrderReceipt => SlotGroup::Commerce,
+            self::CouponCode => SlotGroup::Commerce,
+            self::CountdownTimer => SlotGroup::Engagement,
+            self::RatingBar => SlotGroup::Engagement,
+            self::SocialLinks => SlotGroup::Engagement,
+            self::AppBadges => SlotGroup::Engagement,
+            self::StatBox => SlotGroup::Data,
+            self::DataTable => SlotGroup::Data,
+            self::RssFeed => SlotGroup::Data,
+        };
+    }
+
     public function description(): string
     {
         return match ($this) {

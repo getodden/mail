@@ -6,6 +6,7 @@ namespace Odden\MailBuilder\Tests\Unit;
 
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailSlot;
+use Odden\MailBuilder\Enums\SlotGroup;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Schema\FieldType;
 use Odden\MailBuilder\Schema\SlotField;
@@ -187,5 +188,34 @@ class SlotSchemaTest extends TestCase
         $this->assertNotNull($hero);
         $this->assertContains('hero_image', array_map(fn (SlotField $f): string => $f->key, $hero->fields));
         $this->assertNotContains('hero_image', array_map(fn (SlotField $f): string => $f->key, $hero->basicFields()));
+    }
+
+    public function test_every_type_is_in_a_listed_group_with_a_short_label_for_the_palette(): void
+    {
+        $export = SlotSchemaRegistry::toArray();
+        $groupKeys = array_column($export['groups'], 'key');
+
+        $this->assertSame(array_map(fn (SlotGroup $group): string => $group->value, SlotGroup::cases()), $groupKeys);
+
+        foreach ($export['slots'] as $slot) {
+            $this->assertContains($slot['group'], $groupKeys, $slot['type']);
+            $this->assertNotSame('', trim((string) $slot['short_label']), $slot['type']);
+            $this->assertLessThanOrEqual(14, mb_strlen((string) $slot['short_label']), "{$slot['type']} has a short label too long for a tile.");
+        }
+
+        foreach ($groupKeys as $key) {
+            $this->assertNotEmpty(array_filter($export['slots'], fn (array $slot): bool => $slot['group'] === $key), "The group [{$key}] is empty.");
+        }
+    }
+
+    public function test_every_schema_icon_has_its_path_data_in_the_editor(): void
+    {
+        $icons = file_get_contents(dirname(__DIR__, 2).'/resources/js/editor/icons.js');
+
+        $this->assertIsString($icons);
+
+        foreach (SlotSchemaRegistry::all() as $schema) {
+            $this->assertStringContainsString("'{$schema->icon}': [", $icons, "The editor has no icon for [{$schema->icon}] ({$schema->type->value}).");
+        }
     }
 }

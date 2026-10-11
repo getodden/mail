@@ -99,7 +99,6 @@ odden-mail-editor {
 
 .ome-button,
 .ome-icon-button,
-.ome-palette-item,
 .ome-structure-select,
 .ome-handle {
     background: var(--ome-surface);
@@ -136,7 +135,6 @@ odden-mail-editor {
 
 .ome-button:hover:not(:disabled),
 .ome-icon-button:hover:not(:disabled),
-.ome-palette-item:hover,
 .ome-structure-select:hover {
     background: #f8fafc;
     border-color: #cbd5e1;
@@ -154,27 +152,99 @@ odden-mail-editor {
 
 /* Palette */
 
-.ome-palette {
+.ome-tabs {
+    background: var(--ome-canvas);
+    border-radius: 8px;
     display: grid;
-    gap: 6px;
-    grid-template-columns: 1fr;
+    gap: 2px;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 12px;
+    padding: 2px;
 }
 
-.ome-palette-item {
+.ome-tab {
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    color: var(--ome-muted);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    min-height: 30px;
+}
+
+.ome-tab[aria-selected='true'] {
+    background: var(--ome-surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    color: var(--ome-ink);
+}
+
+.ome-pane[hidden] {
+    display: none;
+}
+
+.ome-search {
+    margin-bottom: 12px;
+    width: 100%;
+}
+
+.ome-group-heading {
+    color: var(--ome-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    margin: 14px 0 6px;
+    text-transform: uppercase;
+}
+
+.ome-palette-group:first-child .ome-group-heading {
+    margin-top: 0;
+}
+
+.ome-tiles {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ome-tile {
     align-items: center;
+    background: var(--ome-surface);
+    border: 1px solid var(--ome-line);
+    border-radius: 8px;
+    color: var(--ome-ink);
     cursor: grab;
     display: flex;
-    gap: 8px;
-    min-height: 34px;
-    padding: 4px 10px;
-    text-align: left;
+    flex-direction: column;
+    font: inherit;
+    font-size: 12px;
+    gap: 6px;
+    justify-content: center;
+    min-height: 72px;
+    padding: 10px 6px;
+    text-align: center;
     touch-action: none;
     user-select: none;
 }
 
-.ome-palette-glyph {
+.ome-tile:hover {
+    background: var(--ome-accent-soft);
+    border-color: var(--ome-accent);
+}
+
+.ome-tile-icon {
     color: var(--ome-accent);
-    font-weight: 700;
+    display: inline-flex;
+}
+
+.ome-tile-icon svg {
+    height: 24px;
+    width: 24px;
+}
+
+.ome-tile-label {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 /* Structure list */
