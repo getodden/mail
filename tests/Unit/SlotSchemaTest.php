@@ -151,6 +151,7 @@ class SlotSchemaTest extends TestCase
         $this->assertSame(['Feature', 'Starter', 'Professional', 'Enterprise'], $table?->defaults()['headers']);
         $this->assertSame('cells', $rows?->items[0]->key);
         $this->assertSame(FieldType::Tags, $rows?->items[0]->type);
+        $this->assertCount(count($table?->defaults()['headers']), $rows?->items[0]->resolveDefault(), 'A new row has as many cells as the table has columns.');
 
         $pricing = SlotSchemaRegistry::for(SlotType::PricingGrid);
         $tiers = collect($pricing?->fields)->firstWhere('key', 'tiers');

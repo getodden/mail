@@ -530,7 +530,7 @@ final class SlotSchemaRegistry
             new SlotField('subtitle', FieldType::Text, 'Table Subtitle (Optional)', placeholder: 'Compare available features across plans', fullWidth: true),
             new SlotField('headers', FieldType::Tags, 'Column Header Names', help: 'One column name per line.', default: ['Feature', 'Starter', 'Professional', 'Enterprise'], fullWidth: true),
             new SlotField('rows', FieldType::Items, 'Table Rows', fullWidth: true, defaultItems: 3, items: [
-                new SlotField('cells', FieldType::Tags, 'Row Cell Values (Matching Column Count)', help: 'One cell per line, in column order.', required: true),
+                new SlotField('cells', FieldType::Tags, 'Row Cell Values (Matching Column Count)', help: 'One cell per line, in column order.', required: true, default: ['Feature name', 'Included', 'Included', 'Included']),
             ]),
             new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
         ], supportsVisibility: true);
