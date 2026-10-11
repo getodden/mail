@@ -241,14 +241,14 @@ Each slot type can describe itself: which fields its `data` takes, how to label 
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 
-$schema = SlotSchemaRegistry::for(SlotType::Hero);   // null for a type that is not described yet
+$schema = SlotSchemaRegistry::for(SlotType::Hero);   // every slot type has a schema
 $schema->defaults();                                  // the data of a new hero slot
 $schema->basicFields();                               // the fields of the basic form
 
-return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs: a "version", the described slots, and a "labels" map that names every slot type, also those not described yet
+return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs: a "version", the described slots, and and a "labels" map that names every slot type
 ```
 
-A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
+A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `tags`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
 
 Eight types are described so far: header, hero, body text, button, image banner, features, divider and footer. The rest are rendered by their views and edited with their Filament blocks as before, and are described one at a time. Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
 
@@ -256,7 +256,7 @@ Eight types are described so far: header, hero, body text, button, image banner,
 
 An editor for the slots, built as a web component with no framework: `<odden-mail-editor>`. It shows the email as it will be sent, with a palette of blocks, a structure list, and a settings panel for the selected block. Drag a block from the palette onto the email, or drag a block to move it. Every action also has a button and a keyboard shortcut, and changes are announced to screen readers. Undo and redo (Ctrl or Cmd + Z, Shift + Z) cover everything.
 
-The editor edits the slot document as data and never touches HTML. The server renders the preview with the same compiler that builds the email, so what you see is what is sent, and the preview cannot be broken by editing. Only the first eight slot types are editable so far (see the slot schema above). A slot of another type in the document is kept as it is: you can move, duplicate and delete it, and its preview is rendered.
+The editor edits the slot document as data and never touches HTML. The server renders the preview with the same compiler that builds the email, so what you see is what is sent, and the preview cannot be broken by editing. Every slot type is editable (see the slot schema above). A slot of a type the editor does not know, such as one from a newer version, is kept as it is: you can move, duplicate and delete it, and its preview is rendered.
 
 **1. Turn on the routes.** The editor needs two routes, a slot schema and a preview. They are off by default, because anyone who can reach them can render email HTML. Switch them on in `config/mail-builder.php` and set your own middleware:
 
@@ -325,7 +325,7 @@ The field's theme wins over a theme sent by the browser.
 
 - **No routes and no extra setup for the preview.** The field renders the preview itself, through Livewire, so it runs under the panel's own authentication and authorization. (The routes in section 8 are for use outside Filament.)
 - **Publish the assets** with Filament's own command, the first time and after an update: `php artisan filament:assets`.
-- **State from either shape.** A column holding Filament's keyed Builder items or a plain list both load, and the field saves a plain list. Slots of a type that is not editable yet are kept as they are.
+- **State from either shape.** A column holding Filament's keyed Builder items or a plain list both load, and the field saves a plain list. Slots of a type the field does not know are kept as they are.
 - **It follows the form.** When the form changes the state itself, for example an action that applies a preset with `$set('slots', ...)`, the editor shows the new content.
 - A disabled field is shown but cannot be edited.
 

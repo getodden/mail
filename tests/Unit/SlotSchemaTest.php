@@ -15,22 +15,24 @@ use Odden\MailBuilder\Tests\TestCase;
 
 class SlotSchemaTest extends TestCase
 {
-    public function test_the_described_types_are_the_planned_first_eight(): void
+    public function test_every_slot_type_is_described(): void
     {
-        $this->assertSame(
-            ['header', 'hero', 'body_text', 'button', 'image_banner', 'features', 'divider', 'footer'],
-            array_map(fn (SlotType $type): string => $type->value, SlotSchemaRegistry::types()),
-        );
+        $described = array_map(fn (SlotType $type): string => $type->value, SlotSchemaRegistry::types());
+        $all = array_map(fn (SlotType $type): string => $type->value, SlotType::cases());
+
+        $this->assertEqualsCanonicalizing($all, $described);
+        $this->assertSame($described, array_values(array_unique($described)), 'A type is listed twice.');
     }
 
-    public function test_every_described_type_has_a_schema_and_the_others_have_none(): void
+    public function test_every_type_has_a_schema_that_belongs_to_it(): void
     {
         foreach (SlotType::cases() as $type) {
-            if (SlotSchemaRegistry::has($type)) {
-                $this->assertInstanceOf(SlotSchema::class, SlotSchemaRegistry::for($type), $type->value);
-            } else {
-                $this->assertNull(SlotSchemaRegistry::for($type), $type->value);
-            }
+            $this->assertTrue(SlotSchemaRegistry::has($type), $type->value);
+
+            $schema = SlotSchemaRegistry::for($type);
+
+            $this->assertInstanceOf(SlotSchema::class, $schema, $type->value);
+            $this->assertSame($type, $schema->type);
         }
     }
 
@@ -108,7 +110,7 @@ class SlotSchemaTest extends TestCase
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertSame(SlotSchemaRegistry::VERSION, $decoded['version']);
-        $this->assertCount(8, $decoded['slots']);
+        $this->assertCount(count(SlotType::cases()), $decoded['slots']);
 
         $hero = collect($decoded['slots'])->firstWhere('type', 'hero');
         $this->assertSame('Hero Headline & Banner', $hero['label']);
@@ -130,14 +132,51 @@ class SlotSchemaTest extends TestCase
         $this->assertSame(2, $items['default_items']);
     }
 
-    public function test_every_slot_type_has_a_label_in_the_export_even_without_a_schema(): void
+    public function test_every_slot_type_has_a_label_in_the_export(): void
     {
         $labels = SlotSchemaRegistry::toArray()['labels'];
 
         $this->assertCount(count(SlotType::cases()), $labels);
         $this->assertSame('Customer Quote & Testimonial', $labels['testimonial']);
         $this->assertSame(SlotType::Hero->label(), $labels['hero']);
-        $this->assertNull(SlotSchemaRegistry::for(SlotType::Testimonial));
+    }
+
+    public function test_a_list_of_strings_is_a_tags_field_with_array_defaults(): void
+    {
+        $table = SlotSchemaRegistry::for(SlotType::DataTable);
+        $headers = collect($table?->fields)->firstWhere('key', 'headers');
+        $rows = collect($table?->fields)->firstWhere('key', 'rows');
+
+        $this->assertSame(FieldType::Tags, $headers?->type);
+        $this->assertSame(['Feature', 'Starter', 'Professional', 'Enterprise'], $table?->defaults()['headers']);
+        $this->assertSame('cells', $rows?->items[0]->key);
+        $this->assertSame(FieldType::Tags, $rows?->items[0]->type);
+
+        $pricing = SlotSchemaRegistry::for(SlotType::PricingGrid);
+        $tiers = collect($pricing?->fields)->firstWhere('key', 'tiers');
+
+        $this->assertSame(FieldType::Tags, collect($tiers?->items)->firstWhere('key', 'features')?->type);
+    }
+
+    public function test_select_defaults_are_one_of_their_options(): void
+    {
+        foreach (SlotSchemaRegistry::all() as $schema) {
+            foreach ($schema->fields as $field) {
+                $fields = [$field, ...$field->items];
+
+                foreach ($fields as $candidate) {
+                    $default = $candidate->resolveDefault();
+
+                    if ($candidate->type !== FieldType::Select || $default === null) {
+                        continue;
+                    }
+
+                    $values = array_map(fn (array $option): string => (string) $option['value'], $candidate->options);
+
+                    $this->assertContains((string) $default, $values, "{$schema->type->value}.{$candidate->key} defaults to a value it does not offer.");
+                }
+            }
+        }
     }
 
     public function test_advanced_fields_are_marked_and_kept_out_of_the_basic_form(): void
