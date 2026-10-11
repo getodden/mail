@@ -149,3 +149,42 @@ test('the drop line sits on the slot boundary', () => {
     assert.equal(dropLineY(rects, 2), 150);
     assert.equal(dropLineY([], 0), 0);
 });
+
+test('the palette groups blocks in the server order and drops empty groups', async () => {
+    const { groupBlocks } = await import('../../resources/js/editor/model.js');
+    const groups = [{ key: 'content', label: 'Content' }, { key: 'layout', label: 'Columns & layout' }, { key: 'data', label: 'Data' }];
+    const schemas = [
+        { type: 'two_column', label: '2-Column Card Grid', short_label: '2 columns', description: 'Side-by-side layout', group: 'layout' },
+        { type: 'hero', label: 'Hero Headline & Banner', short_label: 'Hero', description: 'Bold banner', group: 'content' },
+        { type: 'body_text', label: 'Text & Content', short_label: 'Text', description: 'Editorial text', group: 'content' },
+    ];
+
+    const all = groupBlocks(schemas, groups);
+
+    assert.deepEqual(all.map((g) => g.key), ['content', 'layout']);
+    assert.deepEqual(all[0].blocks.map((b) => b.type), ['hero', 'body_text']);
+});
+
+test('a search matches every word against the label, short label, description and group', async () => {
+    const { groupBlocks } = await import('../../resources/js/editor/model.js');
+    const groups = [{ key: 'content', label: 'Content' }, { key: 'layout', label: 'Columns & layout' }];
+    const schemas = [
+        { type: 'two_column', label: '2-Column Card Grid', short_label: '2 columns', description: 'Side-by-side layout', group: 'layout' },
+        { type: 'hero', label: 'Hero Headline & Banner', short_label: 'Hero', description: 'Bold banner', group: 'content' },
+    ];
+    const types = (query) => groupBlocks(schemas, groups, query).flatMap((g) => g.blocks.map((b) => b.type));
+
+    assert.deepEqual(types('hero'), ['hero']);
+    assert.deepEqual(types('SIDE by'), ['two_column']);
+    assert.deepEqual(types('columns layout'), ['two_column']);
+    assert.deepEqual(types('banner headline'), ['hero']);
+    assert.deepEqual(types('nothing like this'), []);
+});
+
+test('a schema with no groups is one group without a heading, and an unlisted group is shown last', async () => {
+    const { groupBlocks } = await import('../../resources/js/editor/model.js');
+    const schemas = [{ type: 'hero', label: 'Hero', group: 'new_group' }];
+
+    assert.deepEqual(groupBlocks(schemas, undefined).map((g) => [g.key, g.label, g.blocks.length]), [['', '', 1]]);
+    assert.deepEqual(groupBlocks(schemas, [{ key: 'content', label: 'Content' }]).map((g) => [g.key, g.label]), [['', 'Other']]);
+});

@@ -70,6 +70,9 @@ final class SlotSchema
         return [
             'type' => $this->type->value,
             'label' => $this->label(),
+            'short_label' => $this->type->shortLabel(),
+            'description' => $this->type->description(),
+            'group' => $this->type->group()->value,
             'icon' => $this->icon,
             'columns' => $this->columns,
             'supports_visibility' => $this->supportsVisibility,

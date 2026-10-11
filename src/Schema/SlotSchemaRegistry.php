@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Odden\MailBuilder\Schema;
 
 use Odden\MailBuilder\Enums\ButtonStyle;
+use Odden\MailBuilder\Enums\SlotGroup;
 use Odden\MailBuilder\Enums\SlotType;
 
 /**
@@ -16,7 +17,7 @@ use Odden\MailBuilder\Enums\SlotType;
 final class SlotSchemaRegistry
 {
     /** Bumped when the shape of the exported schema changes. */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /**
      * The slot types that have a schema, in the order an editor lists them.
@@ -111,7 +112,7 @@ final class SlotSchemaRegistry
      *
      * `labels` names every slot type, also the ones with no schema yet, so an editor can show a block it cannot edit.
      *
-     * @return array{version: int, slots: array<int, array<string, mixed>>, labels: array<string, string>}
+     * @return array{version: int, groups: array<int, array{key: string, label: string}>, slots: array<int, array<string, mixed>>, labels: array<string, string>}
      */
     public static function toArray(): array
     {
@@ -123,6 +124,7 @@ final class SlotSchemaRegistry
 
         return [
             'version' => self::VERSION,
+            'groups' => array_map(fn (SlotGroup $group): array => ['key' => $group->value, 'label' => $group->label()], SlotGroup::cases()),
             'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), self::all()),
             'labels' => $labels,
         ];
@@ -291,7 +293,7 @@ final class SlotSchemaRegistry
 
     private static function threeColumn(): SlotSchema
     {
-        return new SlotSchema(SlotType::ThreeColumn, 'view-columns', [
+        return new SlotSchema(SlotType::ThreeColumn, 'squares-plus', [
             new SlotField('heading', FieldType::Text, 'Section Heading', placeholder: 'e.g. Featured Highlights', fullWidth: true),
             new SlotField('subtitle', FieldType::Text, 'Subtitle', placeholder: 'e.g. Explore our newest feature releases', fullWidth: true),
             new SlotField('columns', FieldType::Items, 'Three Columns', fullWidth: true, defaultItems: 3, itemColumns: 2, items: [
@@ -462,7 +464,7 @@ final class SlotSchemaRegistry
 
     private static function dynamicFeed(): SlotSchema
     {
-        return new SlotSchema(SlotType::DynamicFeed, 'sparkles', [
+        return new SlotSchema(SlotType::DynamicFeed, 'arrow-path', [
             new SlotField('heading', FieldType::Text, 'Section Heading', default: 'Recommended For You', fullWidth: true),
             new SlotField('subtitle', FieldType::Text, 'Subtitle', placeholder: 'Curated recommendations based on your preferences', fullWidth: true),
             new SlotField('items', FieldType::Items, 'Dynamic Products / Content Items', fullWidth: true, defaultItems: 2, itemColumns: 2, items: [
@@ -505,7 +507,7 @@ final class SlotSchemaRegistry
 
     private static function orderReceipt(): SlotSchema
     {
-        return new SlotSchema(SlotType::OrderReceipt, 'shopping-bag', [
+        return new SlotSchema(SlotType::OrderReceipt, 'receipt-percent', [
             new SlotField('order_number', FieldType::Text, 'Order / Reference #', required: true, default: '#1001'),
             new SlotField('order_date', FieldType::Text, 'Order Date', placeholder: 'e.g. October 24, 2026'),
             new SlotField('currency', FieldType::Text, 'Currency Symbol', default: '$'),
@@ -595,7 +597,7 @@ final class SlotSchemaRegistry
 
     private static function labeledDivider(): SlotSchema
     {
-        return new SlotSchema(SlotType::LabeledDivider, 'minus', [
+        return new SlotSchema(SlotType::LabeledDivider, 'ellipsis-horizontal', [
             new SlotField('label', FieldType::Text, 'Divider Center Label / Badge', required: true, default: 'OR'),
             new SlotField('badge_bg', FieldType::Color, 'Badge Background Color', default: '#f1f5f9'),
             new SlotField('text_color', FieldType::Color, 'Badge Text Color', default: '#64748b'),

@@ -220,3 +220,34 @@ export function dropLineY(rects, index) {
 
     return index >= rects.length ? rects[rects.length - 1].bottom : rects[index].top;
 }
+
+/**
+ * The blocks of the palette for a search text, in groups: `[{key, label, blocks: [slotSchema]}]`. A block matches when
+ * every word of the query is found in its label, short label, description or group name. Empty groups are left out.
+ * A schema from a server that sends no groups lands in one group with no heading.
+ */
+export function groupBlocks(schemas, groups, query = '') {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const labelOf = new Map((groups ?? []).map((group) => [group.key, group.label]));
+    const matches = (slotSchema) => {
+        const text = [slotSchema.label, slotSchema.short_label, slotSchema.description, labelOf.get(slotSchema.group), slotSchema.type.replaceAll('_', ' ')].filter(Boolean).join(' ').toLowerCase();
+
+        return words.every((word) => text.includes(word));
+    };
+    const found = schemas.filter(matches);
+
+    if (!groups || groups.length === 0) {
+        return found.length > 0 ? [{ key: '', label: '', blocks: found }] : [];
+    }
+
+    const known = new Set(groups.map((group) => group.key));
+    const result = groups.map((group) => ({ ...group, blocks: found.filter((s) => s.group === group.key) }));
+    // A block whose group the server did not list is still shown, after the others.
+    const rest = found.filter((s) => !known.has(s.group));
+
+    if (rest.length > 0) {
+        result.push({ key: '', label: 'Other', blocks: rest });
+    }
+
+    return result.filter((group) => group.blocks.length > 0);
+}

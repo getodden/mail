@@ -3,8 +3,9 @@
 // It edits the slot document as data and never edits HTML: the server renders the preview with the same compiler that
 // builds the email, so what you see is what is sent. See the README for the attributes, properties and events.
 
-import { clear, h } from './dom.js';
+import { clear, h, icon } from './dom.js';
 import { renderField } from './fields.js';
+import { FALLBACK_ICON, ICONS } from './icons.js';
 import { History } from './history.js';
 import {
     addItem,
@@ -12,6 +13,7 @@ import {
     dropLineY,
     duplicateSlot,
     fromDocument,
+    groupBlocks,
     indexOfSlot,
     insertAt,
     insertionIndex,
@@ -67,6 +69,9 @@ function fetchAdapter(element) {
 export class OddenMailEditor extends HTMLElement {
     #adapter = null;
     #schema = new Map();
+    #groups = [];
+    #query = '';
+    #tab = 'blocks';
     #labels = {};
     #slots = [];
     #base = {};
@@ -197,7 +202,14 @@ export class OddenMailEditor extends HTMLElement {
         refs.status = h('span', { class: 'ome-status', role: 'status' });
         refs.live = h('div', { class: 'ome-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
         refs.palette = h('div', { class: 'ome-palette' });
+        refs.search = h('input', { type: 'search', class: 'ome-input ome-search', placeholder: 'Search blocks', 'aria-label': 'Search blocks', autocomplete: 'off', oninput: (event) => this.#search(event.target.value) });
+        refs.noMatch = h('p', { class: 'ome-help', hidden: true }, 'No block matches your search.');
         refs.structure = h('ol', { class: 'ome-structure' });
+        refs.tabBlocks = h('button', { type: 'button', role: 'tab', id: 'ome-tab-blocks', class: 'ome-tab', 'aria-selected': 'true', 'aria-controls': 'ome-pane-blocks', onclick: () => this.#setTab('blocks') }, 'Blocks');
+        refs.tabStructure = h('button', { type: 'button', role: 'tab', id: 'ome-tab-structure', class: 'ome-tab', 'aria-selected': 'false', 'aria-controls': 'ome-pane-structure', tabindex: '-1', onclick: () => this.#setTab('structure') }, 'Structure');
+        refs.tabs = h('div', { class: 'ome-tabs', role: 'tablist', 'aria-label': 'Left panel', onkeydown: (event) => this.#tabKey(event) }, refs.tabBlocks, refs.tabStructure);
+        refs.blocksPane = h('div', { class: 'ome-pane', id: 'ome-pane-blocks', role: 'tabpanel', 'aria-labelledby': 'ome-tab-blocks' }, refs.search, refs.palette, refs.noMatch);
+        refs.structurePane = h('div', { class: 'ome-pane', id: 'ome-pane-structure', role: 'tabpanel', 'aria-labelledby': 'ome-tab-structure', hidden: true }, refs.structure);
         refs.panel = h('div', { class: 'ome-panel' });
         refs.iframe = h('iframe', { class: 'ome-iframe', title: 'Email preview', sandbox: 'allow-same-origin', scrolling: 'no' });
         refs.boxes = h('div', { class: 'ome-boxes', 'aria-hidden': 'true' });
@@ -215,7 +227,7 @@ export class OddenMailEditor extends HTMLElement {
             h(
                 'div',
                 { class: 'ome-body' },
-                h('aside', { class: 'ome-left', 'aria-label': 'Blocks and structure' }, h('h2', { class: 'ome-heading' }, 'Blocks'), refs.palette, h('h2', { class: 'ome-heading' }, 'Structure'), refs.structure),
+                h('aside', { class: 'ome-left', 'aria-label': 'Blocks and structure' }, refs.tabs, refs.blocksPane, refs.structurePane),
                 h('main', { class: 'ome-canvas' }, refs.error, refs.empty, refs.stage),
                 h('aside', { class: 'ome-right', 'aria-label': 'Block settings' }, refs.panel),
             ),
@@ -265,6 +277,7 @@ export class OddenMailEditor extends HTMLElement {
             this.#schema = new Map(schema.slots.map((slotSchema) => [slotSchema.type, slotSchema]));
             // A label for every slot type, so a block the editor cannot edit yet still has a readable name.
             this.#labels = schema.labels ?? {};
+            this.#groups = schema.groups ?? [];
         } catch (error) {
             this.#showError(error.message);
 
@@ -608,36 +621,81 @@ export class OddenMailEditor extends HTMLElement {
     // Palette, structure and property panel
 
     #renderPalette() {
-        const { palette } = this.#refs;
+        const { palette, noMatch } = this.#refs;
+        const groups = groupBlocks([...this.#schema.values()], this.#groups, this.#query);
 
         clear(palette);
+        noMatch.hidden = groups.length > 0;
 
-        for (const slotSchema of this.#schema.values()) {
+        for (const group of groups) {
             palette.append(
                 h(
-                    'button',
-                    {
-                        type: 'button',
-                        class: 'ome-palette-item',
-                        'data-type': slotSchema.type,
-                        title: `${slotSchema.label}. Click to add, or drag onto the email.`,
-                        onclick: (event) => {
-                            // A drag ends with a click on the same element: that click must not add a second block.
-                            if (this.#suppressClick) {
-                                this.#suppressClick = false;
-                                event.preventDefault();
-
-                                return;
-                            }
-
-                            this.#insertNew(slotSchema.type, null);
-                        },
-                        onpointerdown: (event) => this.#startDrag(event, { kind: 'new', type: slotSchema.type, label: slotSchema.label }),
-                    },
-                    h('span', { class: 'ome-palette-glyph', 'aria-hidden': 'true' }, '+'),
-                    slotSchema.label,
+                    'section',
+                    { class: 'ome-palette-group' },
+                    group.label ? h('h3', { class: 'ome-group-heading' }, group.label) : null,
+                    h('div', { class: 'ome-tiles' }, group.blocks.map((slotSchema) => this.#renderTile(slotSchema))),
                 ),
             );
+        }
+    }
+
+    #renderTile(slotSchema) {
+        const label = slotSchema.short_label ?? slotSchema.label;
+        const paths = ICONS[slotSchema.icon] ?? ICONS[FALLBACK_ICON];
+
+        return h(
+            'button',
+            {
+                type: 'button',
+                class: 'ome-tile',
+                'data-type': slotSchema.type,
+                'aria-label': `${slotSchema.label}. Add to the email.`,
+                title: `${slotSchema.label}${slotSchema.description ? `: ${slotSchema.description}` : ''}\nClick to add, or drag onto the email.`,
+                onclick: (event) => {
+                    // A drag ends with a click on the same element: that click must not add a second block.
+                    if (this.#suppressClick) {
+                        this.#suppressClick = false;
+                        event.preventDefault();
+
+                        return;
+                    }
+
+                    this.#insertNew(slotSchema.type, null);
+                },
+                onpointerdown: (event) => this.#startDrag(event, { kind: 'new', type: slotSchema.type, label: slotSchema.label }),
+            },
+            h('span', { class: 'ome-tile-icon' }, icon(paths)),
+            h('span', { class: 'ome-tile-label' }, label),
+        );
+    }
+
+    #search(text) {
+        this.#query = text;
+        this.#renderPalette();
+    }
+
+    #setTab(tab, { focus = false } = {}) {
+        const { tabBlocks, tabStructure, blocksPane, structurePane } = this.#refs;
+
+        this.#tab = tab;
+        blocksPane.hidden = tab !== 'blocks';
+        structurePane.hidden = tab !== 'structure';
+
+        for (const [name, button] of [['blocks', tabBlocks], ['structure', tabStructure]]) {
+            button.setAttribute('aria-selected', String(name === tab));
+            button.tabIndex = name === tab ? 0 : -1;
+        }
+
+        if (focus) {
+            (tab === 'blocks' ? tabBlocks : tabStructure).focus();
+        }
+    }
+
+    /** Arrow keys move between the two tabs, as the tabs pattern expects. */
+    #tabKey(event) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            this.#setTab(event.key === 'ArrowLeft' || event.key === 'Home' ? 'blocks' : 'structure', { focus: true });
         }
     }
 
