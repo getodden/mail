@@ -10,6 +10,7 @@ use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -29,9 +30,7 @@ final class SchemaBlockFactory
 {
     public static function make(SlotType $type): Block
     {
-        $schema = SlotSchemaRegistry::for($type) ?? throw new \LogicException("No schema for slot type [{$type->value}].");
-
-        return self::fromSchema($schema);
+        return self::fromSchema(SlotSchemaRegistry::for($type));
     }
 
     public static function fromSchema(SlotSchema $schema): Block
@@ -68,6 +67,7 @@ final class SchemaBlockFactory
             FieldType::Toggle => Toggle::make($field->key),
             FieldType::Select => Select::make($field->key)->options(self::options($field)),
             FieldType::Number => TextInput::make($field->key)->numeric(),
+            FieldType::Tags => TagsInput::make($field->key),
             FieldType::Items => Repeater::make($field->key)
                 ->schema(array_map(fn (SlotField $item): Field => self::field($item), $field->items))
                 ->columns($field->itemColumns > 0 ? $field->itemColumns : null)

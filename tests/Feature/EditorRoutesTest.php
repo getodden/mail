@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Tests\Feature;
 
+use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 use Odden\MailBuilder\Tests\TestCase;
 
 class EditorRoutesTest extends TestCase
@@ -20,8 +22,8 @@ class EditorRoutesTest extends TestCase
     {
         $response = $this->getJson('/mail-builder/editor/schema')->assertOk();
 
-        $this->assertSame(1, $response->json('version'));
-        $this->assertCount(8, $response->json('slots'));
+        $this->assertSame(SlotSchemaRegistry::VERSION, $response->json('version'));
+        $this->assertCount(count(SlotType::cases()), $response->json('slots'));
         $this->assertSame('hero', $response->json('slots.1.type'));
     }
 

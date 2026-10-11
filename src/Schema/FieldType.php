@@ -19,6 +19,9 @@ enum FieldType: string
     case Toggle = 'toggle';
     case Number = 'number';
 
+    /** A list of short strings (feature bullets, table cells). Stored as a plain array of strings. */
+    case Tags = 'tags';
+
     /** A list of items, each described by the field's own `items` fields. */
     case Items = 'items';
 }

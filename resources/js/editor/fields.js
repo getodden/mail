@@ -32,6 +32,13 @@ export function renderField(options) {
     return h('div', { class: 'ome-field' }, label, control, field.help ? h('p', { class: 'ome-help', id: helpId }, field.help) : null);
 }
 
+/** The lines of a textarea as a list of strings: blank lines are dropped, an empty text is no list at all. */
+export function parseLines(text) {
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== '');
+
+    return lines.length > 0 ? lines : '';
+}
+
 function describedBy(helpId) {
     return helpId ? { 'aria-describedby': helpId } : {};
 }
@@ -49,6 +56,17 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
                 placeholder: field.placeholder ?? false,
                 value: value ?? '',
                 oninput: (event) => onChange(path, event.target.value),
+            });
+
+        case 'tags':
+            // A list of short strings is edited as one per line: a cell may contain a comma, but never a line break.
+            return h('textarea', {
+                ...shared,
+                class: 'ome-input ome-textarea',
+                rows: Math.max(3, Array.isArray(value) ? value.length + 1 : 3),
+                placeholder: field.placeholder ?? false,
+                value: Array.isArray(value) ? value.join('\n') : '',
+                oninput: (event) => onChange(path, parseLines(event.target.value)),
             });
 
         case 'select':
