@@ -93,10 +93,10 @@ class MergeTagRegistry
      *
      * @param  array<string, mixed>|null  $context
      */
-    public function interpolate(string $content, ?array $context = null): string
+    public function interpolate(string $content, ?array $context = null, bool $escape = false): string
     {
         $context ??= $this->sampleContext();
 
-        return $this->interpolator->interpolate($content, $context);
+        return $this->interpolator->interpolate($content, $context, $escape);
     }
 }
