@@ -127,9 +127,9 @@ class MailBuilder
      *
      * @param  array<string, mixed>|null  $context
      */
-    public static function interpolate(string $content, ?array $context = null): string
+    public static function interpolate(string $content, ?array $context = null, bool $escape = false): string
     {
-        return self::mergeTags()->interpolate($content, $context);
+        return self::mergeTags()->interpolate($content, $context, $escape);
     }
 
     /**

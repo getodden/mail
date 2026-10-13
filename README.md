@@ -149,6 +149,16 @@ Available Filters:
 - `pluralize: 'item', 'items'`
 - `truncate: 50`
 - `default: 'fallback value'`
+- `raw` (see below)
+
+**Escaping.** `TemplateMailable` (the transactional send) HTML-escapes every value that comes from the data you pass in, where it lands
+in the message's HTML: a name or a note a customer typed cannot add markup or a link to your email. Text you wrote in the template,
+including a `default` fallback, is left as written. If a value really is markup you trust (an order table you built), say so in the
+template: `{{ order_table | raw }}`. The plain-text part and the subject are text and are not escaped; the subject is always one line,
+and `unsubscribe_url` / `listUnsubscribeUrl` must be an http(s) or mailto address to become a `List-Unsubscribe` header.
+
+`MailBuilder::interpolate($content, $context)` does not escape (callers that escape their own values rely on that); pass
+`escape: true` to escape.
 
 ---
 

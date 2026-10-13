@@ -13,9 +13,15 @@ class MergeTagInterpolator
     /**
      * Interpolate merge tags and conditional blocks within a given string using context.
      *
+     * With $escape, a value that comes from the context is HTML-escaped where it is put into the text, so a value that is
+     * not markup (a name, a note, an order reference a customer typed) cannot add markup or a link to an email. A tag
+     * written with the `raw` filter ({{ order_table | raw }}) is the template author saying the value is markup they
+     * trust; fallback text from a `default` filter is the author's own and is not escaped. Without $escape (plain text,
+     * subjects, and callers that escape their own values) nothing is escaped, as before.
+     *
      * @param  array<string, mixed>  $context
      */
-    public function interpolate(string $content, array $context = []): string
+    public function interpolate(string $content, array $context = [], bool $escape = false): string
     {
         // 1. Process conditional logic blocks: {% if condition %}...{% else %}...{% endif %}
         $content = $this->interpolateConditionals($content, $context);
@@ -23,12 +29,16 @@ class MergeTagInterpolator
         // 2. Process variable tags with pipe filters: {{ tag | filter1 | filter2:arg }}
         return (string) preg_replace_callback(
             '/\{\{\s*([a-zA-Z0-9_\.]+)(?:\s*\|\s*([^}]+))?\s*\}\}/',
-            function (array $matches) use ($context): string {
+            function (array $matches) use ($context, $escape): string {
                 $tag = trim($matches[1]);
                 $pipeFilters = isset($matches[2]) ? trim($matches[2]) : null;
 
                 $raw = Arr::get($context, $tag);
                 $value = ($raw !== null && is_scalar($raw)) ? (string) $raw : null;
+
+                // Whether the text being built is the context's (to be escaped) or the template author's own.
+                $fromContext = $value !== null;
+                $trusted = false;
 
                 if ($pipeFilters !== null && $pipeFilters !== '') {
                     $filters = $this->parseFilters($pipeFilters);
@@ -37,10 +47,13 @@ class MergeTagInterpolator
                         $name = $filter['name'];
                         $args = $filter['args'];
 
-                        if ($name === 'default') {
+                        if ($name === 'raw') {
+                            $trusted = true;
+                        } elseif ($name === 'default') {
                             $defaultFallback = $args[0] ?? '';
                             if ($value === null || $value === '') {
                                 $value = $defaultFallback;
+                                $fromContext = false;
                             }
                         } elseif ($value !== null) {
                             $value = $this->applyFilter($value, $name, $args);
@@ -49,7 +62,9 @@ class MergeTagInterpolator
                 }
 
                 if ($value !== null) {
-                    return $value;
+                    return $escape && $fromContext && ! $trusted
+                        ? htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                        : $value;
                 }
 
                 // If no value provided, leave tag intact

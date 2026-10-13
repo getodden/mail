@@ -54,10 +54,13 @@ class TemplateMailable extends Mailable
             $plain = MailBuilder::plainText($template);
         }
 
-        // Interpolate merge tags
-        $this->compiledHtml = MailBuilder::interpolate($html, $this->data);
+        // Interpolate merge tags. Values are HTML-escaped where they land in the HTML ({{ tag | raw }} puts markup the template author
+        // trusts); plain text and the subject are text, and a subject is one line whatever a value held.
+        $this->compiledHtml = MailBuilder::interpolate($html, $this->data, escape: true);
         $this->compiledPlainText = MailBuilder::interpolate($plain, $this->data);
-        $this->subjectLine = $subject !== null ? MailBuilder::interpolate($subject, $this->data) : 'Important Update';
+        $this->subjectLine = $subject !== null
+            ? trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', MailBuilder::interpolate($subject, $this->data)))
+            : 'Important Update';
 
         if ($this->embedCidImages) {
             $embedResult = CidImageEmbedder::embed($this->compiledHtml);
@@ -92,7 +95,9 @@ class TemplateMailable extends Mailable
     {
         $unsub = $this->listUnsubscribeUrl ?? ($this->data['unsubscribe_url'] ?? null);
 
-        if (! empty($unsub) && is_string($unsub)) {
+        // The List-Unsubscribe header carries an address a mailbox provider may call: only an http(s) or mailto address, with nothing
+        // in it that could end the header value or add another.
+        if (! empty($unsub) && is_string($unsub) && preg_match('~^(?:https?://|mailto:)[^\s<>"\'\x00-\x1F\x7F]+$~i', $unsub) === 1) {
             return new Headers(
                 text: [
                     'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
