@@ -6,6 +6,8 @@ A modular, Outlook-bulletproof email building, auditing, and compilation engine 
 
 Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://odden.io).
 
+**Status:** All 29 slot types are rendered by the compiler, described in the slot schema, and editable in both the Filament builder and the drag-and-drop editor.
+
 ---
 
 ## Key Features
@@ -255,12 +257,12 @@ $schema = SlotSchemaRegistry::for(SlotType::Hero);   // every slot type has a sc
 $schema->defaults();                                  // the data of a new hero slot
 $schema->basicFields();                               // the fields of the basic form
 
-return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs: a "version", the described slots, and and a "labels" map that names every slot type
+return response()->json(SlotSchemaRegistry::toArray()); // everything an editor needs: a "version", the described slots, and a "labels" map that names every slot type
 ```
 
 A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `tags`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
 
-Eight types are described so far: header, hero, body text, button, image banner, features, divider and footer. The rest are rendered by their views and edited with their Filament blocks as before, and are described one at a time. Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
+All 29 slot types are described, so the editor and the Filament blocks can edit every one of them (see [Supported Slot Types](#supported-slot-types-29-total)). Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
 
 ### 8. Drag-and-drop editor
 
