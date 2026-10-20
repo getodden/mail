@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Odden\MailBuilder\Compilers;
 
 use Illuminate\Contracts\View\Factory as ViewFactory;
-use Illuminate\Support\Facades\Http;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\Support\OutboundUrlGuard;
 use Odden\MailBuilder\Themes\FontManager;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
@@ -174,8 +174,10 @@ class EmailSlotCompiler
         }
 
         try {
-            $response = Http::timeout(3)->get($feedUrl);
-            if ($response->successful()) {
+            $guard = app(OutboundUrlGuard::class);
+            $response = $guard->request($feedUrl)->get($feedUrl);
+
+            if ($response->successful() && strlen($response->body()) <= $guard->maxBytes()) {
                 $json = $response->json();
                 if (is_array($json)) {
                     $items = isset($json['items']) && is_array($json['items']) ? $json['items'] : $json;
@@ -185,7 +187,7 @@ class EmailSlotCompiler
                 }
             }
         } catch (\Throwable) {
-            // Fail gracefully to configured static fallback items
+            // A refused or failed fetch falls back to the configured static items.
         }
 
         return $data;
