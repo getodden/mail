@@ -668,3 +668,64 @@ it('extracts embedded images into CID inline attachments via CidImageEmbedder', 
     expect($mailable->compiledHtml)->toContain('src="cid:img_');
     expect($mailable->customAttachments)->not->toBeEmpty();
 });
+
+describe('CidImageEmbedder local files', function () {
+    beforeEach(function () {
+        $this->root = sys_get_temp_dir().'/cid-embed-'.bin2hex(random_bytes(4));
+        mkdir($this->root.'/base/img', 0777, true);
+        file_put_contents(
+            $this->root.'/base/img/logo.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
+        );
+        file_put_contents($this->root.'/secret.txt', 'top secret');
+        file_put_contents($this->root.'/base/img/notes.txt', 'plain text, not an image');
+        $this->base = $this->root.'/base';
+    });
+
+    afterEach(function () {
+        foreach ([$this->root.'/base/img/logo.png', $this->root.'/base/img/notes.txt', $this->root.'/secret.txt'] as $file) {
+            @unlink($file);
+        }
+        @rmdir($this->root.'/base/img');
+        @rmdir($this->root.'/base');
+        @rmdir($this->root);
+    });
+
+    it('embeds an image inside the base path', function () {
+        $result = MailBuilder::embedCidImages('<img src="img/logo.png">', $this->base);
+
+        expect($result['attachments'])->toHaveCount(1)
+            ->and($result['attachments'][0]['mime'])->toBe('image/png')
+            ->and($result['html'])->toContain('src="cid:img_');
+    });
+
+    it('does not embed files outside the base path', function (string $src) {
+        $html = '<img src="'.$src.'">';
+
+        expect(MailBuilder::embedCidImages($html, $this->base))
+            ->toBe(['html' => $html, 'attachments' => []]);
+    })->with([
+        'parent traversal' => '../secret.txt',
+        'deep traversal' => 'img/../../secret.txt',
+        'stream wrapper' => 'php://filter/resource=img/logo.png',
+        'file scheme' => 'file:///etc/hosts',
+        'protocol-relative' => '//example.com/logo.png',
+    ]);
+
+    it('does not embed a symlink that leaves the base path', function () {
+        symlink($this->root.'/secret.txt', $this->base.'/img/link.png');
+        $html = '<img src="img/link.png">';
+
+        $result = MailBuilder::embedCidImages($html, $this->base);
+        @unlink($this->base.'/img/link.png');
+
+        expect($result)->toBe(['html' => $html, 'attachments' => []]);
+    });
+
+    it('does not embed a file that is not an image', function () {
+        $html = '<img src="img/notes.txt">';
+
+        expect(MailBuilder::embedCidImages($html, $this->base))
+            ->toBe(['html' => $html, 'attachments' => []]);
+    });
+});
