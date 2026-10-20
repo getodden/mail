@@ -6,6 +6,8 @@ namespace Odden\MailBuilder\Transport;
 
 class CidImageEmbedder
 {
+    private const MAX_LOCAL_IMAGE_BYTES = 5 * 1024 * 1024;
+
     /**
      * Parse HTML, extract embedded base64 or local images, replace src with cid: references,
      * and produce attachment definitions for mail transport.
@@ -63,11 +65,11 @@ class CidImageEmbedder
             }
 
             // Case 2: Local relative file path (if basePath is provided and file exists)
-            if ($basePath !== null && ! str_starts_with($src, 'http://') && ! str_starts_with($src, 'https://')) {
-                $filePath = rtrim($basePath, '/').'/'.ltrim($src, '/');
-                if (file_exists($filePath) && is_readable($filePath)) {
+            if ($basePath !== null) {
+                $filePath = self::resolveLocalImage($basePath, $src);
+                if ($filePath !== null) {
                     $content = (string) file_get_contents($filePath);
-                    $mime = mime_content_type($filePath) ?: 'image/png';
+                    $mime = (string) mime_content_type($filePath);
                     $fileName = basename($filePath);
                     $hash = substr(md5($content), 0, 12);
                     $cid = "img_{$hash}@{$cidDomain}";
@@ -93,5 +95,32 @@ class CidImageEmbedder
             'html' => $transformedHtml,
             'attachments' => $attachments,
         ];
+    }
+
+    /**
+     * Resolve a relative image path inside the base path, or null when it must not be embedded.
+     *
+     * The template is untrusted input, so the file must stay inside the base directory (after symlinks
+     * and ".." are resolved), be a regular readable file of a modest size, and really be an image.
+     */
+    private static function resolveLocalImage(string $basePath, string $src): ?string
+    {
+        // URLs, protocol-relative addresses, stream wrappers and NUL bytes are never local paths.
+        if (str_contains($src, "\0") || str_starts_with($src, '//') || preg_match('/^[a-z][a-z0-9+.\-]*:/i', $src)) {
+            return null;
+        }
+
+        $root = realpath($basePath);
+        $file = $root === false ? false : realpath(rtrim($basePath, '/').'/'.ltrim($src, '/'));
+
+        if ($root === false || $file === false || ! str_starts_with($file, rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        if (! is_file($file) || ! is_readable($file) || filesize($file) > self::MAX_LOCAL_IMAGE_BYTES) {
+            return null;
+        }
+
+        return str_starts_with((string) mime_content_type($file), 'image/') ? $file : null;
     }
 }
