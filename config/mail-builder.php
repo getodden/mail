@@ -56,4 +56,20 @@ return [
         // The most slots a preview request may render.
         'max_slots' => 200,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Feed Blocks
+    |--------------------------------------------------------------------------
+    |
+    | The RSS and dynamic feed blocks fetch JSON from a URL stored in the email, when the email is compiled. The address
+    | the host resolves to must be a public one: private, loopback and cloud metadata addresses are refused, redirects are
+    | not followed, and a response larger than max_bytes is ignored. A refused feed falls back to the block's own items.
+    | List a host in allowed_hosts to let it through, for a feed you serve from your own network.
+    |
+    */
+    'feeds' => [
+        'allowed_hosts' => [],
+        'max_bytes' => 1_048_576,
+    ],
 ];

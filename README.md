@@ -392,6 +392,12 @@ npm run test:js    # the editor's model and history (Node's built-in test runner
 
 ---
 
+## Feed blocks
+
+The `rss` and `dynamic_feed` blocks fetch JSON from the `feed_url` stored in the email, when the email is compiled. Because that URL is content, the fetch is guarded: the host must resolve only to public addresses (private, loopback, link-local and cloud metadata addresses are refused), redirects are not followed, the request times out after a few seconds, and a response over `mail-builder.feeds.max_bytes` (1 MB) is ignored. A refused or failed feed falls back to the block's own items. To fetch a feed you serve from your own network, list its host in `mail-builder.feeds.allowed_hosts`.
+
+---
+
 ## Sending, lists and campaigns
 
 This package builds and checks emails. It does not manage contacts, lists, consent or sending. Those come from [Odden CRM](https://github.com/getodden/crm) (open source) and its paid add-ons, or from your own application: `TemplateMailable` sends through any Laravel mailer. See [odden.io](https://odden.io) for Odden Cloud and the paid Marketing add-on.
