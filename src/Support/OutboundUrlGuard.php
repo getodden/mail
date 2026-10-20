@@ -115,11 +115,11 @@ class OutboundUrlGuard
 
     public static function isPublicAddress(string $address): bool
     {
-        return filter_var(
+        return (bool) filter_var(
             $address,
             FILTER_VALIDATE_IP,
             FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE,
-        ) !== false;
+        );
     }
 
     /**
