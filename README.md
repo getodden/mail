@@ -1,8 +1,12 @@
-# Laravel Mail Builder (`getodden/mail`)
+# Odden Mail Builder (`getodden/mail`)
 
-[![tests](https://github.com/getodden/mail/actions/workflows/tests.yml/badge.svg)](https://github.com/getodden/mail/actions/workflows/tests.yml)
+[![Latest version](https://img.shields.io/packagist/v/getodden/mail)](https://packagist.org/packages/getodden/mail)
+[![License: MIT](https://img.shields.io/packagist/l/getodden/mail)](LICENSE.md)
+[![PHP](https://img.shields.io/packagist/php-v/getodden/mail)](https://packagist.org/packages/getodden/mail)
 
 A modular, Outlook-bulletproof email building, auditing, and compilation engine for Laravel applications.
+
+Build an email from 29 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
 
 Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://odden.io).
 
@@ -385,6 +389,12 @@ composer test      # Pest, via Orchestra Testbench
 composer analyse   # PHPStan level 8 with Larastan
 npm run test:js    # the editor's model and history (Node's built-in test runner)
 ```
+
+---
+
+## Sending, lists and campaigns
+
+This package builds and checks emails. It does not manage contacts, lists, consent or sending. Those come from [Odden CRM](https://github.com/getodden/crm) (open source) and its paid add-ons, or from your own application: `TemplateMailable` sends through any Laravel mailer. See [odden.io](https://odden.io) for Odden Cloud and the paid Marketing add-on.
 
 ---
 
