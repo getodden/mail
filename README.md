@@ -8,7 +8,7 @@ A modular, Outlook-bulletproof email building, auditing, and compilation engine 
 
 Build an email from 29 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
 
-[![The drag-and-drop editor, with the block palette, a live email preview and the block settings panel](docs/editor.png)](https://odden.io/open-source/mail-builder)
+[![The drag-and-drop editor: adding a quote block, typing its text, moving it up the email and switching to the mobile preview](docs/editor.gif)](https://odden.io/open-source/mail-builder)
 
 [Try the editor in your browser](https://odden.io/open-source/mail-builder): it is the one in this package, with nothing saved or sent.
 
