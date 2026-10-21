@@ -23,7 +23,7 @@ Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://o
 - **29 Modular Responsive Slots:** Pre-built responsive components that collapse smoothly to 100% width on mobile devices, with Microsoft Outlook MSO conditional table compatibility.
 - **Universal Compilation Engine:** Compile modular slots or structured `EmailDocument` instances into inlined responsive HTML (`EmailSlotCompiler`) or interactive AMP for Email (`AmpEmailCompiler`).
 - **Liquid-Style Personalization:** Fast token interpolation supporting uppercase, lowercase, capitalize, date formatting, currency, number, pluralize, default values, and inline conditionals (`{% if condition %}...{% else %}...{% endif %}`).
-- **Deliverability & Spam Auditor:** Automatic pre-flight auditing calculating spam trigger scores, missing unsubscribe headers, image-to-text ratios, dark mode color inversion contrast, and live DNS deliverability checks (SPF, DMARC, BIMI).
+- **Deliverability & Spam Auditor:** Automatic pre-flight auditing scoring unsubscribe links, image alt text, subject lines, mailing address, Gmail clipping, Outlook rendering and WCAG contrast, and live DNS deliverability checks (SPF, DMARC, BIMI).
 - **Multi-Device Screenshot Simulation:** Adapter interface for testing email rendering across Outlook Windows (120 DPI), Apple Mail iOS 17 Dark Mode, macOS Sonoma, and Gmail Android.
 - **Theme & Typography Engine:** Built-in design system presets (*Corporate Slate*, *Midnight Indigo*, *Emerald SaaS*, *Warm Sunset*, *Monochrome Minimal*) with automatic Google Fonts web font imports and Outlook fallback font stacks.
 - **Bidirectional Ingestion:** Export templates to HTML, Plain Text, MJML, or ZIP packages—and reverse-parse external raw HTML or standard MJML into native modular slots.
@@ -194,8 +194,8 @@ $compiledHtml = MailBuilder::compile($docFromMjml);
 ```php
 // 1. Run Pre-flight Deliverability & Spam Audit
 $audit = MailBuilder::audit($html);
-if (! $audit->passes) {
-    // Inspect $audit->critical_issues, $audit->warnings, and $audit->spam_score
+if ($audit->hasBlockingIssues()) {
+    // Inspect $audit->checks (each with a status of pass, warning or fail) and $audit->score (0-100)
 }
 
 // 2. WCAG 2.1 AA/AAA Color Contrast Audit
