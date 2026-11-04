@@ -20,6 +20,7 @@ use Odden\MailBuilder\Filament\Components\EmailSlotBuilder;
 use Odden\MailBuilder\Schema\CustomSlotType;
 use Odden\MailBuilder\Schema\SlotRegistry;
 use Odden\MailBuilder\Schema\SlotSchemaRegistry;
+use Odden\MailBuilder\Tests\Support\MismatchedSchemaSlot;
 use Odden\MailBuilder\Tests\Support\PlainTextSpotlightSlot;
 use Odden\MailBuilder\Tests\Support\SpotlightSlot;
 use Odden\MailBuilder\Tests\TestCase;
@@ -234,6 +235,13 @@ class CustomSlotTest extends TestCase
         $names = array_map(fn (Component $block): string => $block->getName(), $children['default'] ?? $children);
 
         $this->assertContains('spotlight', $names);
+    }
+
+    public function test_a_slot_whose_schema_is_built_for_another_key_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->registry()->register(new MismatchedSchemaSlot);
     }
 
     private function registry(): SlotRegistry

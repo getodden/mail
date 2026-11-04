@@ -52,8 +52,10 @@ final class SchemaBlockFactory
 
     private static function icon(string $key): Heroicon
     {
+        $name = Heroicon::class.'::'.Str::studly($key);
+
         /** @var Heroicon $icon */
-        $icon = constant(Heroicon::class.'::'.Str::studly($key));
+        $icon = defined($name) ? constant($name) : Heroicon::Squares2x2;
 
         return $icon;
     }

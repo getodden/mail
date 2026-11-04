@@ -28,6 +28,12 @@ final class SlotRegistry
             throw new InvalidArgumentException("Custom slot key [{$key}] is already registered.");
         }
 
+        $schemaKey = $type->schema()->key();
+
+        if ($schemaKey !== $key) {
+            throw new InvalidArgumentException("Custom slot [{$key}] has a schema built for [{$schemaKey}].");
+        }
+
         $this->types[$key] = $type;
     }
 

@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Filament\Components\EmailSlotBuilder;
 use Odden\MailBuilder\Schema\SlotField;
+use Odden\MailBuilder\Schema\SlotRegistry;
 use Odden\MailBuilder\Schema\SlotSchemaRegistry;
+use Odden\MailBuilder\Tests\Support\IconSlot;
 use Odden\MailBuilder\Tests\TestCase;
 use ReflectionProperty;
 
@@ -62,6 +64,37 @@ class SchemaBlockFactoryTest extends TestCase
     public function test_types_without_a_schema_still_have_their_block(): void
     {
         $this->assertInstanceOf(Block::class, EmailSlotBuilder::getTestimonialBlock());
+    }
+
+    public function test_the_builder_accepts_a_custom_slot_with_a_heroicon_key(): void
+    {
+        app(SlotRegistry::class)->register(new IconSlot('wine_bar', 'star'));
+
+        $this->assertContains('wine_bar', self::builderBlockNames());
+    }
+
+    public function test_the_builder_accepts_a_custom_slot_whose_icon_is_not_a_heroicon(): void
+    {
+        app(SlotRegistry::class)->register(new IconSlot('wine_bar', 'wine-glass'));
+
+        $this->assertContains('wine_bar', self::builderBlockNames());
+    }
+
+    protected function tearDown(): void
+    {
+        app(SlotRegistry::class)->flush();
+
+        parent::tearDown();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function builderBlockNames(): array
+    {
+        $children = (new ReflectionProperty(Component::class, 'childComponents'))->getValue(EmailSlotBuilder::make());
+
+        return array_values(array_map(fn (Component $block): string => $block->getName(), $children['default'] ?? $children));
     }
 
     private static function block(SlotType $type): Block
