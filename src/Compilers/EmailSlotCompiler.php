@@ -9,7 +9,12 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\Schema\FieldType;
+use Odden\MailBuilder\Schema\SlotField;
+use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
+use Odden\MailBuilder\Support\SafeColor;
+use Odden\MailBuilder\Support\SafeUrl;
 use Odden\MailBuilder\Themes\FontManager;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
@@ -18,6 +23,9 @@ class EmailSlotCompiler
     protected ?MergeTagInterpolator $interpolator = null;
 
     protected ?CssToInlineStyles $inliner = null;
+
+    /** @var array<string, list<SlotField>> */
+    protected array $fieldsByKey = [];
 
     /**
      * @param  array<string, mixed>  $defaultConfig
@@ -155,11 +163,72 @@ class EmailSlotCompiler
             );
         }
 
+        $data = $this->sanitize($data, $this->fieldsFor($slot->key()));
+        $slot = new EmailSlot(type: $slot->type, data: $data, visibility: $slot->visibility);
+
         return $this->view->make($viewName, [
             'slot' => $slot,
             'data' => $data,
             'theme' => array_merge($this->defaultConfig, $theme),
         ])->render();
+    }
+
+    /**
+     * @return list<SlotField>
+     */
+    protected function fieldsFor(string $key): array
+    {
+        return $this->fieldsByKey[$key] ??= array_values(SlotSchemaRegistry::forKey($key)->fields ?? []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<int, SlotField>  $fields
+     * @return array<string, mixed>
+     */
+    protected function sanitize(array $data, array $fields): array
+    {
+        foreach ($fields as $field) {
+            $value = $data[$field->key] ?? null;
+
+            if ($field->type === FieldType::Items && is_array($value)) {
+                $data[$field->key] = array_map(
+                    fn (mixed $item): mixed => is_array($item) ? $this->sanitize($item, $field->items) : $item,
+                    $value,
+                );
+
+                continue;
+            }
+
+            if (! is_string($value)) {
+                continue;
+            }
+
+            match ($field->type) {
+                FieldType::Url => $data[$field->key] = SafeUrl::for($value),
+                FieldType::Image => $data[$field->key] = SafeUrl::for($value, true),
+                FieldType::Color => $this->sanitizeColor($data, $field->key, $value),
+                default => null,
+            };
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function sanitizeColor(array &$data, string $key, string $value): void
+    {
+        $color = SafeColor::for($value);
+
+        if ($color === null) {
+            unset($data[$key]);
+
+            return;
+        }
+
+        $data[$key] = $color;
     }
 
     /**
