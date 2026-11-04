@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Support;
 
+use InvalidArgumentException;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerAction;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 
 final class RawHtmlSanitizer
 {
+    private const TABLE_ELEMENTS = ['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'];
+
+    private const TABLE_TAG = '/<\/?(?:table|thead|tbody|tfoot|tr|td|th|caption|colgroup|col)(?=[\s\/>])[^<>]*+>/i';
+
     private const ELEMENTS = [
-        'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'div', 'span', 'p', 'br', 'hr', 'a', 'img',
+        'div', 'span', 'p', 'br', 'hr', 'a', 'img',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 's', 'small',
         'sup', 'sub', 'blockquote', 'center', 'font', 'pre', 'code',
     ];
@@ -26,21 +31,34 @@ final class RawHtmlSanitizer
 
     private const MEDIA_SCHEMES = ['http', 'https', 'cid'];
 
-    public static function sanitize(string $html): string
+    public const PROFILE_HTML = 'html';
+
+    public const PROFILE_RICH = 'rich';
+
+    public static function sanitize(string $html, string $profile = self::PROFILE_HTML): string
     {
+        $rich = match ($profile) {
+            self::PROFILE_RICH => true,
+            self::PROFILE_HTML => false,
+            default => throw new InvalidArgumentException("Unknown sanitizer profile [{$profile}]."),
+        };
+
         if (trim($html) === '') {
             return '';
         }
 
-        [$protected, $mergeTags] = MergeTagGuard::protect($html);
+        $html = $rich ? (string) preg_replace(self::TABLE_TAG, '', $html) : BlockMergeTags::strip($html);
 
-        return MergeTagGuard::restore(self::sanitizer($mergeTags)->sanitize($protected), $mergeTags, quoteSafeInTags: true);
+        [$protected, $mergeTags] = MergeTagGuard::protect($html);
+        $sanitized = MergeTagGuard::restoreInMarkup(self::sanitizer($mergeTags, $rich)->sanitize($protected), $mergeTags);
+
+        return $rich ? $sanitized : BlockMergeTags::strip($sanitized);
     }
 
     /**
      * @param  array<string, string>  $mergeTags
      */
-    private static function sanitizer(array $mergeTags): HtmlSanitizer
+    private static function sanitizer(array $mergeTags, bool $rich): HtmlSanitizer
     {
         $config = (new HtmlSanitizerConfig)
             ->defaultAction(HtmlSanitizerAction::Drop)
@@ -51,11 +69,11 @@ final class RawHtmlSanitizer
             ->withMaxInputLength(-1)
             ->withAttributeSanitizer(new StyleAttributeSanitizer($mergeTags));
 
-        foreach (self::ELEMENTS as $element) {
+        foreach ([...self::ELEMENTS, ...($rich ? [] : self::TABLE_ELEMENTS)] as $element) {
             $config = $config->allowElement($element, self::GLOBAL_ATTRIBUTES);
         }
 
-        foreach (self::UNWRAPPED_ELEMENTS as $element) {
+        foreach ([...self::UNWRAPPED_ELEMENTS, ...($rich ? self::TABLE_ELEMENTS : [])] as $element) {
             $config = $config->blockElement($element);
         }
 

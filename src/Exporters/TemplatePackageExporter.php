@@ -62,7 +62,7 @@ MJML;
                     break;
 
                 case 'body_text':
-                    $content = RawHtmlSanitizer::sanitize(is_scalar($data['content'] ?? null) ? (string) $data['content'] : '');
+                    $content = RawHtmlSanitizer::sanitize(is_scalar($data['content'] ?? null) ? (string) $data['content'] : '', RawHtmlSanitizer::PROFILE_RICH);
                     $sections[] = <<<MJML
     <mj-section background-color="{$contentBg}" padding="16px 24px">
       <mj-column>

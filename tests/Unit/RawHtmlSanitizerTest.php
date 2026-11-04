@@ -152,14 +152,21 @@ class RawHtmlSanitizerTest extends TestCase
 
     public function test_merge_tags_survive_byte_for_byte_in_links_and_text(): void
     {
-        $html = '<p>Hi {{ contact.first_name | default("friend") }}, {% if vip %}welcome back{% else %}welcome{% endif %}</p><a href="{{ unsubscribe_url }}">Leave</a><img src="{{ logo_url }}" alt="x">';
+        $html = '<p>Hi {{ contact.first_name | default("friend") }}</p><a href="{{ unsubscribe_url }}">Leave</a><img src="{{ logo_url }}" alt="x">';
 
         $output = $this->compileSlot('html', 'html', $html);
 
         $this->assertStringContainsString('{{ contact.first_name | default("friend") }}', $output);
-        $this->assertStringContainsString('{% if vip %}welcome back{% else %}welcome{% endif %}', $output);
         $this->assertStringContainsString('<a href="{{ unsubscribe_url }}">Leave</a>', $output);
         $this->assertStringContainsString('<img src="{{ logo_url }}" alt="x" />', $output);
+    }
+
+    public function test_block_merge_tags_survive_in_rich_text_but_not_in_the_html_slot(): void
+    {
+        $html = '<p>{% if vip %}welcome back{% else %}welcome{% endif %}</p>';
+
+        $this->assertStringContainsString('{% if vip %}welcome back{% else %}welcome{% endif %}', $this->compileSlot('body_text', 'content', $html));
+        $this->assertStringNotContainsString('welcome', $this->compileSlot('html', 'html', $html));
     }
 
     public function test_a_merge_tag_cannot_break_out_of_an_attribute(): void

@@ -56,7 +56,7 @@ final class SlotDataSanitizer
             }
 
             if ($field->type === FieldType::RichText || $field->rawHtml) {
-                self::markup($data, $field->key, $value);
+                self::markup($data, $field->key, $value, $field->rawHtml ? RawHtmlSanitizer::PROFILE_HTML : RawHtmlSanitizer::PROFILE_RICH);
 
                 continue;
             }
@@ -79,14 +79,14 @@ final class SlotDataSanitizer
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function markup(array &$data, string $key, mixed $value): void
+    private static function markup(array &$data, string $key, mixed $value, string $profile): void
     {
         if ($value === null) {
             return;
         }
 
         if (is_scalar($value)) {
-            $data[$key] = RawHtmlSanitizer::sanitize((string) $value);
+            $data[$key] = RawHtmlSanitizer::sanitize((string) $value, $profile);
 
             return;
         }

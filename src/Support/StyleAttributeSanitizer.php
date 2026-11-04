@@ -12,9 +12,17 @@ final class StyleAttributeSanitizer implements AttributeSanitizerInterface
     private const FORBIDDEN = ['url(', 'expression(', 'javascript:', 'behavior', '-moz-binding', '@import', 'image-set(', 'image(', 'src(', 'cross-fade(', 'element(', 'paint(', '\\', '/*', '*/', '<', '>'];
 
     /**
+     * @var array<string, string>
+     */
+    private readonly array $probes;
+
+    /**
      * @param  array<string, string>  $mergeTags
      */
-    public function __construct(private readonly array $mergeTags = []) {}
+    public function __construct(array $mergeTags = [])
+    {
+        $this->probes = array_map(static fn (string $original): string => MergeTagGuard::attributeToken($original) ?? '', $mergeTags);
+    }
 
     public function getSupportedElements(): ?array
     {
@@ -28,10 +36,13 @@ final class StyleAttributeSanitizer implements AttributeSanitizerInterface
 
     public function sanitizeAttribute(string $element, string $attribute, string $value, HtmlSanitizerConfig $config): ?string
     {
-        return self::filter($this->mergeTags === [] ? $value : strtr($value, $this->mergeTags));
+        return self::filter($value, $this->probes);
     }
 
-    public static function filter(string $style): ?string
+    /**
+     * @param  array<string, string>  $probes
+     */
+    public static function filter(string $style, array $probes = []): ?string
     {
         $kept = [];
         $removed = false;
@@ -43,7 +54,7 @@ final class StyleAttributeSanitizer implements AttributeSanitizerInterface
                 continue;
             }
 
-            if (self::isSafe($declaration)) {
+            if (self::isSafe($probes === [] ? $declaration : strtr($declaration, $probes))) {
                 $kept[] = $declaration;
             } else {
                 $removed = true;

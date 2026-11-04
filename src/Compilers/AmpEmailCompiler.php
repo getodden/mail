@@ -142,7 +142,7 @@ HTML;
 
     protected function compileAmpGeneralSlot(EmailSlot $slot): string
     {
-        $content = RawHtmlSanitizer::sanitize((string) $slot->get('content', ''));
+        $content = RawHtmlSanitizer::sanitize((string) $slot->get('content', ''), RawHtmlSanitizer::PROFILE_RICH);
         if ($content !== '') {
             return "<div class=\"amp-card\">{$content}</div>";
         }

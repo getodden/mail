@@ -22,7 +22,7 @@ final class HtmlUrlScrubber
 
     private const MEDIA_TAGS = ['img', 'td', 'table', 'v:fill'];
 
-    private const MENTIONS = '/(?:href|src|action|formaction|background|poster|data|srcset|values)\s*=/i';
+    private const MENTIONS = '/(?:href|src|action|formaction|background|poster|data|srcset|values)\s*=|\bon[a-z0-9_:.-]+\s*=/i';
 
     public static function scrub(string $html): string
     {
@@ -51,6 +51,10 @@ final class HtmlUrlScrubber
             self::ATTRIBUTE,
             function (array $match) use ($tag): string {
                 $name = strtolower($match[1]);
+
+                if (strlen($name) > 2 && str_starts_with($name, 'on')) {
+                    return '';
+                }
 
                 if (! isset($match[2])) {
                     return $match[0];

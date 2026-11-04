@@ -6,6 +6,8 @@ namespace Odden\MailBuilder\Support;
 
 final class MergeTagGuard
 {
+    private const ATTRIBUTE_TOKEN = '/^\{\{ *[A-Za-z0-9_.]+(?: *\| *[A-Za-z_]+(?:\( *(?:\'[^\'"<>&\\\\\r\n]*\'|"[^\'"<>&\\\\\r\n]*"|[A-Za-z0-9_.-]*) *\)| *: *(?:\'[^\'"<>&\\\\\r\n]*\'|"[^\'"<>&\\\\\r\n]*"|[A-Za-z0-9_.-]*))?)* *\}\}$/D';
+
     /**
      * @return array{string, array<string, string>}
      */
@@ -42,21 +44,16 @@ final class MergeTagGuard
     /**
      * @param  array<string, string>  $originals
      */
-    public static function restore(string $html, array $originals, bool $quoteSafeInTags = false): string
+    public static function restore(string $html, array $originals): string
     {
-        if ($originals === []) {
-            return $html;
-        }
+        return $originals === [] ? $html : strtr($html, $originals);
+    }
 
-        if (! $quoteSafeInTags) {
-            return strtr($html, $originals);
-        }
-
-        $quoteSafe = array_map(
-            static fn (string $original): string => str_replace(['"', "'"], ['&quot;', '&#039;'], $original),
-            $originals,
-        );
-
+    /**
+     * @param  array<string, string>  $originals
+     */
+    public static function restoreInMarkup(string $html, array $originals): string
+    {
         $restored = '';
         $offset = 0;
 
@@ -64,12 +61,48 @@ final class MergeTagGuard
             $close = strpos($html, '>', $open);
             $close = $close === false ? strlen($html) - 1 : $close;
 
-            $restored .= strtr(substr($html, $offset, $open - $offset), $originals)
-                .strtr(substr($html, $open, $close - $open + 1), $quoteSafe);
+            $restored .= self::restore(substr($html, $offset, $open - $offset), $originals)
+                .self::attributeTokens(self::restore(substr($html, $open, $close - $open + 1), $originals));
             $offset = $close + 1;
         }
 
-        return $restored.strtr(substr($html, $offset), $originals);
+        return $restored.self::restore(substr($html, $offset), $originals);
+    }
+
+    public static function attributeToken(string $token): ?string
+    {
+        if (preg_match(self::ATTRIBUTE_TOKEN, $token) !== 1) {
+            return null;
+        }
+
+        return (string) preg_replace('/"([^"\']*)"/', "'\$1'", $token);
+    }
+
+    private static function attributeTokens(string $tag): string
+    {
+        if (! str_contains($tag, '{') && ! str_contains($tag, '}')) {
+            return $tag;
+        }
+
+        $kept = '';
+        $offset = 0;
+        $length = strlen($tag);
+
+        while (($open = strpos($tag, '{', $offset)) !== false) {
+            $kept .= str_replace('}', '', substr($tag, $offset, $open - $offset));
+            $end = self::tagEnd($tag, $open, $length);
+
+            if ($end === null) {
+                $offset = $open + 1;
+
+                continue;
+            }
+
+            $kept .= self::attributeToken(substr($tag, $open, $end - $open)) ?? '';
+            $offset = $end;
+        }
+
+        return $kept.str_replace('}', '', substr($tag, $offset));
     }
 
     private static function tagEnd(string $html, int $open, int $length): ?int
