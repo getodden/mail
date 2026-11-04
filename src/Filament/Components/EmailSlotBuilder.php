@@ -198,17 +198,11 @@ class EmailSlotBuilder
         return SchemaBlockFactory::make(SlotType::RatingBar);
     }
 
-    /**
-     * Event Block Definition.
-     */
     public static function getEventBlock(): Block
     {
         return SchemaBlockFactory::make(SlotType::Event);
     }
 
-    /**
-     * Gallery Block Definition.
-     */
     public static function getGalleryBlock(): Block
     {
         return SchemaBlockFactory::make(SlotType::Gallery);

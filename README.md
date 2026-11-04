@@ -363,7 +363,7 @@ The field's theme wins over a theme sent by the browser.
 | **Asymmetric Split** | `asymmetric_columns` | 1/3 + 2/3 editorial sidebar split |
 | **Feature List** | `features` | Bulleted list with icons, bold titles, and descriptions |
 | **Event Details** | `event` | Event card with date, time, location, description, and a registration button |
-| **Image Gallery** | `gallery` | Two or three column image grid with captions and links that stacks on mobile |
+| **Image Gallery** | `gallery` | Two or three column image grid with captions and links that stacks on mobile (renders at most 12 images) |
 | **Testimonial** | `testimonial` | Quote callout with star rating and author attribution |
 | **Stat Box** | `stat_box` | Key metric numbers and percentage badges |
 | **Divider Line** | `divider` | Horizontal rule or spacer with configurable height |

@@ -1,9 +1,9 @@
 @php
     $heading = (string) ($data['heading'] ?? '');
     $perRow = (int) ($data['columns'] ?? 3) === 2 ? 2 : 3;
-    $images = array_values(array_filter($data['images'] ?? [], fn ($image): bool => is_array($image) && ! empty($image['image_url'])));
+    $images = array_slice(array_values(array_filter($data['images'] ?? [], fn ($image): bool => is_array($image) && ! empty($image['image_url']))), 0, 12);
     $rows = array_chunk($images, $perRow);
-    $cellWidth = $perRow === 2 ? 270 : 180;
+    $cellWidth = $perRow === 2 ? 250 : 160;
     $columnWidth = $perRow === 2 ? '48%' : '31%';
     $headingColor = $theme['heading_color'] ?? '#0f172a';
     $textColor = $theme['text_color'] ?? '#64748b';
@@ -23,9 +23,6 @@
                 <!--[if mso]>
                 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                @foreach($row as $image)
-                    <td width="{{ $cellWidth }}" valign="top" style="padding: 6px;">
-                @endforeach
                 <![endif]-->
                 @foreach($row as $image)
                     @php
@@ -34,6 +31,7 @@
                         $caption = (string) ($image['caption'] ?? '');
                         $linkUrl = (string) ($image['link_url'] ?? '');
                     @endphp
+                    <!--[if mso]><td width="{{ $cellWidth }}" valign="top" style="padding: 6px;"><![endif]-->
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $columnWidth }}" align="left" class="stack-column" style="max-width: {{ $cellWidth }}px; margin-bottom: 16px; margin-right: 2%;">
                         <tr>
                             <td style="font-family: {{ $fontFamily }};">
@@ -50,11 +48,9 @@
                             </td>
                         </tr>
                     </table>
+                    <!--[if mso]></td><![endif]-->
                 @endforeach
                 <!--[if mso]>
-                @foreach($row as $image)
-                    </td>
-                @endforeach
                 </tr>
                 </table>
                 <![endif]-->

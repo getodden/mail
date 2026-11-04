@@ -99,6 +99,79 @@ class GallerySlotTest extends TestCase
         $this->assertStringContainsString('* Vines', $text);
     }
 
+    /**
+     * @return list<array<string, string>>
+     */
+    private function images(int $count): array
+    {
+        return array_map(fn (int $i): array => ['image_url' => "https://example.test/{$i}.jpg", 'alt' => "Image {$i}"], range(1, $count));
+    }
+
+    private function msoBlocks(string $html): string
+    {
+        preg_match_all('/<!--\[if mso\]>(.*?)<!\[endif\]-->/s', $html, $matches);
+
+        return implode("\n", $matches[1]);
+    }
+
+    public function test_four_images_in_three_columns_make_two_rows(): void
+    {
+        $html = app(EmailSlotCompiler::class)->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => 3, 'images' => $this->images(4)]));
+
+        $this->assertSame(2, substr_count($this->msoBlocks($html), '<tr>'));
+        $this->assertSame(4, substr_count($html, 'class="stack-column"'));
+    }
+
+    public function test_five_images_in_two_columns_make_three_rows(): void
+    {
+        $html = app(EmailSlotCompiler::class)->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => 2, 'images' => $this->images(5)]));
+
+        $this->assertSame(3, substr_count($this->msoBlocks($html), '<tr>'));
+    }
+
+    public function test_outlook_markup_has_one_balanced_cell_per_image(): void
+    {
+        $html = app(EmailSlotCompiler::class)->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => 3, 'images' => $this->images(4)]));
+        $mso = $this->msoBlocks($html);
+
+        $this->assertSame(4, substr_count($mso, '<td'));
+        $this->assertSame(4, substr_count($mso, '</td>'));
+        $this->assertSame(substr_count($mso, '<table'), substr_count($mso, '</table>'));
+        $this->assertSame(substr_count($mso, '<tr>'), substr_count($mso, '</tr>'));
+        $this->assertSame(4, substr_count($mso, 'width="160"'));
+    }
+
+    public function test_two_columns_use_250_pixel_cells(): void
+    {
+        $html = app(EmailSlotCompiler::class)->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => 2, 'images' => $this->images(2)]));
+
+        $this->assertSame(2, substr_count($this->msoBlocks($html), 'width="250"'));
+        $this->assertStringContainsString('max-width: 250px', $html);
+    }
+
+    public function test_string_column_counts_behave_like_integers(): void
+    {
+        $compiler = app(EmailSlotCompiler::class);
+
+        $this->assertStringContainsString('width="48%"', $compiler->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => '2', 'images' => $this->images(2)])));
+        $this->assertStringContainsString('width="31%"', $compiler->compileSlot(new EmailSlot(SlotType::Gallery, ['columns' => '3', 'images' => $this->images(2)])));
+    }
+
+    public function test_a_default_empty_gallery_has_no_plain_text(): void
+    {
+        $data = ['columns' => 3, 'images' => [[], [], []]];
+
+        $this->assertSame('', app(PlainTextExtractor::class)->extractFromSlot(new EmailSlot(SlotType::Gallery, $data)));
+    }
+
+    public function test_images_are_capped_at_twelve(): void
+    {
+        $slot = new EmailSlot(SlotType::Gallery, ['columns' => 3, 'images' => $this->images(15)]);
+
+        $this->assertSame(12, substr_count(app(EmailSlotCompiler::class)->compileSlot($slot), 'class="stack-column"'));
+        $this->assertSame(12, substr_count(app(PlainTextExtractor::class)->extractFromSlot($slot), '* '));
+    }
+
     public function test_it_supports_a_visibility_rule(): void
     {
         $slot = new EmailSlot(SlotType::Gallery, [...$this->data(), 'visibility' => [

@@ -296,8 +296,15 @@ class PlainTextExtractor
     protected function extractGallery(EmailSlot $slot): string
     {
         $heading = (string) $slot->get('heading', '');
-        /** @var list<array{image_url?: string, alt?: string, caption?: string, link_url?: string}> $images */
-        $images = $slot->get('images', []);
+        $rawImages = $slot->get('images', []);
+        $images = array_slice(
+            array_values(array_filter(
+                is_array($rawImages) ? $rawImages : [],
+                fn ($image): bool => is_array($image) && ! empty($image['image_url']),
+            )),
+            0,
+            12,
+        );
 
         $lines = [];
         if ($heading !== '') {
