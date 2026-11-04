@@ -56,7 +56,7 @@ MAIL_BUILDER_COMPANY_NAME="Acme Inc."   # defaults to APP_NAME
 MAIL_BUILDER_ADDRESS="123 Example St, Springfield"
 ```
 
-`raw_html_max_bytes` (default `100000`) is the largest a rich text or raw HTML field may be; see Security.
+`raw_html_max_bytes` (default `100000`) is the largest a rich text or raw HTML field may be, and `max_document_bytes` (default `1500000`) is the largest the slots of one email may add up to; see Security.
 
 CAN-SPAM and similar laws require a physical mailing address in marketing email, so set `MAIL_BUILDER_ADDRESS` or pass `address` to each footer slot.
 
@@ -177,7 +177,7 @@ ignores it (the value is escaped) when you pass a document or slot arrays, becau
 `MailBuilder::interpolate($content, $context)` does not escape (callers that escape their own values rely on that); pass
 `escape: true` to escape.
 
-Conditionals (`{% if %}`) work in text and in `body_text`. They are not supported in the raw `html` slot; see Security.
+Conditionals (`{% if %}`) work in text and in `body_text`, one block at a time: blocks must be balanced and cannot be nested, or the email is rejected. They are not supported in the raw `html` slot; see Security. To show content to part of the audience, prefer the slot's visibility rules.
 
 ---
 
@@ -419,6 +419,9 @@ The rules:
   - **Styles.** A `style` attribute is kept, but every declaration that contains `expression(`, `javascript:`, `behavior`, `-moz-binding`, `@import`, `image-set(` (or `image(`, `src(`, `element(`, `paint(`, `cross-fade(`), a backslash escape or a comment is removed. So is every `url(` with two exceptions: `background` and `background-image` may hold one `url()` whose address is a single `http://` or `https://` literal, written bare or in single or double quotes, with no whitespace, escape, comment, parenthesis or merge tag inside it (`background:#000 url(https://cdn.example.com/hero.jpg) no-repeat` works). `<style>` elements are removed, so raw slots cannot carry a stylesheet.
   - **Merge tags.** In text, `{{ tag | filter }}` passes through byte for byte. Inside a tag's markup, such as `href`, `src` or `style`, a `{{ }}` tag is kept only when it matches `{{ path | filter }}`: a dotted path of letters, digits, `_` and `.`, then any number of filters, each with at most one argument that is a bare word (`[A-Za-z0-9_.-]`) or a quoted string without quotes, `<`, `>`, `&`, backslash or line breaks. A double-quoted argument is rewritten with single quotes. A tag that does not match is dropped, a `{% %}` tag is always dropped, and stray braces in a tag are dropped, so a tag cannot close an attribute or open another one. Quotes inside a kept tag are not turned into entities, so `<a href="{{ prefs_url | default('https://example.com/prefs') }}">` comes out as written. Whatever a tag resolves to is checked by the send layer.
   - **Block merge tags.** The interpolator evaluates `{% if %}...{% endif %}` by deleting text, even across tags, and an HTML parser moves text out of tables. So the `html` profile does not support block merge tags. Every `{% ... %}` tag and every Handlebars style `{{#if}}`, `{{#each}}`, `{{#unless}}`, `{{else}}` and `{{/if}}` tag is removed together with everything it wraps (`if`, `for`, `unless`, `each`, `with`), and an unbalanced block tag is removed alone, so content meant for one audience is never shown to another. Variable tags still work. To show content to part of the audience, use the slot's visibility rules. For a list of items, use the `order_receipt` slot. The `rich` profile keeps `{% if %}` blocks in text, and removes table tags first so a block that wraps a table row still wraps its text.
+  - **Block merge tags elsewhere.** Every text, textarea, tags and rich text field, in nested `items` too, and the email's subject and preview text, must have balanced block tags that are not nested. A block is `{% if %}`, `{% for %}`, `{% unless %}`, `{% each %}` or `{% with %}` and their `{{#if}}`, `{{#each}}`, `{{#unless}}` forms, with an optional `{% else %}` or `{{else}}`. An opener with no closer, a closer or else with no block, a closer for another kind of block, a block inside another block, or any other `{% %}` tag, throws `Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException` (an `InvalidArgumentException` with the field key and the problem codes `unbalanced_opener`, `unbalanced_closer`, `mismatched_closer`, `nested_block` and `unknown_block_tag`) and the content is never rendered. The editor preview turns it into a validation error on `slots.{index}.data.{field}` (`subject` or `preview_text` for those), with a message in plain English such as "A block tag such as {% if %} is never closed" or "Block tags cannot be nested inside each other". The rich text value is checked as written and again after sanitizing. `BlockMergeTags::validate($text)` returns the codes for your own forms.
+  - **Conditionals fail closed.** The interpolator reads `{% if key %}`, `{% else %}` and `{% endif %}` with a stack, not a pattern, so balanced nesting evaluates correctly even though authoring rejects it. Anything malformed hides content instead of showing it. An `{% if %}` that is never closed hides everything from its tag to the end of the text, a block with two `{% else %}` tags is hidden, a stray `{% else %}` or `{% endif %}` is dropped, and a condition that is not a plain context key (`{% if a == b %}`) is false. Tags are matched without regard to case.
+  - **Document size cap.** The slots of one email may add up to `mail-builder.max_document_bytes` (default 1500000 bytes) of HTML. `EmailSlotCompiler::compileDocument` throws `Odden\MailBuilder\Exceptions\DocumentTooLargeException`, an `InvalidArgumentException`, as soon as the slots pass it and before CSS is inlined, so a pile of near-cap fields cannot exhaust memory. The editor preview turns it into a validation error on `slots`.
   - **Size cap.** A field over `mail-builder.raw_html_max_bytes` (default 100000 bytes) is refused with `Odden\MailBuilder\Exceptions\RawHtmlTooLargeException`, an `InvalidArgumentException`, before any parsing. The editor preview turns it into a validation error on the slot. Build a large email from slots instead of pasting it into one field.
   - **Normalization.** The sanitizer writes canonical HTML: attribute values are quoted, `=`, `+` and `@` in text and attributes are written as numeric entities, and `<tbody>` is added to tables as browsers do.
 - **Plain text.** The plain-text fallback prints a link only when it passes the same URL rules, and prints just the link text otherwise.
@@ -434,7 +437,8 @@ What the raw sanitizer drops from pasted marketing HTML, so you know before you 
 - `figure` and `figcaption`, which are unwrapped, along with `section`, `article`, `header`, `footer`, `nav` and other sectioning elements.
 - Forms, inputs, buttons, SVG and iframes.
 - Block merge tags in the `html` slot, with the content they wrap.
-- Any one field over the size cap.
+- Nested or unbalanced block merge tags in any other text field, which are rejected instead of rendered. Use one block at a time and the slot's visibility rules to target an audience.
+- Any one field over the size cap, and a whole email over the document cap.
 
 A large pasted template is better built from slots, which carry their own Outlook-safe markup and are not limited by the cap. Use `MailBuilder::importHtml()` to turn HTML into slots.
 
