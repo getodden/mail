@@ -451,6 +451,10 @@ What stays with the host app:
 - **Your own interpolation.** If you fill merge tags yourself instead of through `TemplateMailable`, call `HtmlUrlScrubber::scrub()` on the result. Handle the exception it can throw by not sending the email.
 - **Click tracking.** If you rewrite links to a redirect endpoint, validate the target at the endpoint. The endpoint must accept only `http` and `https` (or your own list) and must not redirect to a URL that failed those rules.
 
+## Upgrading from 2.x
+
+Version 3.0.0 changes what the compiler keeps from raw HTML and rich text, tightens merge tag rules, and adds a required `symfony/html-sanitizer` dependency. Read the upgrade checklist in [CHANGELOG.md](CHANGELOG.md#300---unreleased---2026-11-04) before you update.
+
 ## Testing
 
 ```bash
