@@ -56,6 +56,8 @@ MAIL_BUILDER_COMPANY_NAME="Acme Inc."   # defaults to APP_NAME
 MAIL_BUILDER_ADDRESS="123 Example St, Springfield"
 ```
 
+`raw_html_max_bytes` (default `100000`) is the largest a rich text or raw HTML field may be; see Security.
+
 CAN-SPAM and similar laws require a physical mailing address in marketing email, so set `MAIL_BUILDER_ADDRESS` or pass `address` to each footer slot.
 
 ---
@@ -167,8 +169,15 @@ including a `default` fallback, is left as written. If a value really is markup 
 template: `{{ order_table | raw }}`. The plain-text part and the subject are text and are not escaped; the subject is always one line,
 and `unsubscribe_url` / `listUnsubscribeUrl` must be an http(s) or mailto address to become a `List-Unsubscribe` header.
 
+The `raw` filter is honored only for a template string you wrote. `TemplateMailable` accepts it when you pass an HTML string, and
+ignores it (the value is escaped) when you pass a document or slot arrays, because a tenant user authored those. The same goes for
+`compileDocument()` with `interpolate: true`, which always escapes and never honors `raw`. `MailBuilder::interpolate()` and
+`MergeTagInterpolator::interpolate()` ignore `raw` unless you pass `allowRaw: true`; never do that for HTML a tenant user authored.
+
 `MailBuilder::interpolate($content, $context)` does not escape (callers that escape their own values rely on that); pass
 `escape: true` to escape.
+
+Conditionals (`{% if %}`) work in text and in `body_text`. They are not supported in the raw `html` slot; see Security.
 
 ---
 
@@ -400,19 +409,36 @@ The rules:
 - **URL and image fields.** A value that starts with a URI scheme must be one of the schemes in `mail-builder.url_schemes`. The default list is `http`, `https`, `mailto`, `tel`, `sms`, `webcal`, `webcals`, `whatsapp`, `skype`, `geo`, `itms` and `itms-apps`. Add your own app scheme to the list, and the raw HTML sanitizer keeps links with it too. Image fields allow only `http`, `https`, `cid` and `data:image/png|jpeg|jpg|gif|webp|avif|bmp;base64,`, never SVG, whatever the list says. Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs, `{{merge_tags}}` and a host with a port such as `example.com:8080/x` or `localhost:8000/x` pass unchanged. Nested `items` fields are checked too.
 - **Color fields.** Only hex colors, `rgb()`, `rgba()`, `hsl()`, `hsla()` (letters such as `120deg` are allowed inside the parentheses) and plain color keywords are accepted. Any other value is dropped so the view's default applies, which stops a color from injecting extra CSS declarations. An empty color is dropped too, so it falls back to the default instead of rendering as blank. Theme values whose key ends in `_color` are checked the same way.
 - **Number and select fields.** A number field is cast to an int or float and a non-numeric value is dropped. A select value must be one of the field's options, otherwise it is dropped. A list field that is not an array is dropped.
-- **Raw HTML.** The `body_text` and `html` slots print author HTML. Every field the schema marks as rich text, and the `html` slot's code field, goes through `RawHtmlSanitizer`, an allowlist sanitizer built on `symfony/html-sanitizer`. It parses the markup the way a browser does and writes it back out, so an unbalanced quote cannot hide a link from it. A custom slot that prints a field unescaped should declare it as `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`.
-  - **Kept.** `table`, `thead`, `tbody`, `tfoot`, `tr`, `td`, `th`, `div`, `span`, `p`, `br`, `hr`, `a`, `img`, `h1` to `h6`, `ul`, `ol`, `li`, `strong`, `b`, `em`, `i`, `u`, `s`, `small`, `sup`, `sub`, `blockquote`, `center`, `font`, `pre` and `code`. Attributes are `style`, `class`, `width`, `height`, `align`, `valign`, `bgcolor`, `border`, `cellpadding`, `cellspacing`, `colspan`, `rowspan`, `role`, `dir`, `lang`, `alt` and `title`, plus `href` and `target` on `a`, `src` on `img`, and `color`, `face` and `size` on `font`. `id` and `name` are removed.
-  - **Removed with their contents.** Any other element, including `script`, `style`, `svg`, `math`, `iframe`, `object`, `embed`, `meta`, `link`, `base`, `title`, `textarea` and `select`. Form wrappers and sectioning elements (`form`, `label`, `button`, `section`, `article` and similar) are unwrapped and their text is kept.
-  - **Removed from every tag.** Event handler attributes, `srcdoc`, `xlink:href`, and any attribute not listed above.
+- **Raw HTML.** The `body_text` and `html` slots print author HTML. Every field the schema marks as rich text, and the `html` slot's code field, goes through `RawHtmlSanitizer`, an allowlist sanitizer built on `symfony/html-sanitizer` (`^7.2 || ^8.0`). It parses the markup the way a browser does and writes it back out, so an unbalanced quote cannot hide a link from it. A custom slot that prints a field unescaped should declare it as `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`.
+  - **Two profiles.** `RawHtmlSanitizer::sanitize($html, $profile)` takes `'html'` (the default, used for the `html` slot and any `rawHtml: true` field) or `'rich'` (used for every `FieldType::RichText` field, such as `body_text`, and for the AMP compiler, the plain-text fallback and the exporter). Both profiles share the rules below, except that `rich` allows no table elements: `table`, `thead`, `tbody`, `tfoot`, `tr`, `td` and `th` are unwrapped and their text is kept. Layout belongs in the `html` slot or in slots.
+  - **Kept.** `table`, `thead`, `tbody`, `tfoot`, `tr`, `td` and `th` (profile `html` only), `div`, `span`, `p`, `br`, `hr`, `a`, `img`, `h1` to `h6`, `ul`, `ol`, `li`, `strong`, `b`, `em`, `i`, `u`, `s`, `small`, `sup`, `sub`, `del`, `ins`, `mark`, `blockquote`, `center`, `font`, `pre` and `code`. Attributes are `style`, `class`, `width`, `height`, `align`, `valign`, `bgcolor`, `border`, `cellpadding`, `cellspacing`, `colspan`, `rowspan`, `nowrap`, `role`, `dir`, `lang`, `alt` and `title`, plus `href` and `target` on `a`, `src` on `img`, `background` on `table` and `td` (profile `html`), and `color`, `face` and `size` on `font`.
+  - **Removed with their contents.** Any other element, including `script`, `style`, `svg`, `math`, `iframe`, `object`, `embed`, `meta`, `link`, `base`, `title`, `textarea` and `select`. Form wrappers and sectioning elements (`form`, `label`, `button`, `section`, `article`, `figure` and similar) are unwrapped and their text is kept.
+  - **Removed from every tag.** Event handler attributes, `srcdoc`, `xlink:href`, `id`, `name`, and any attribute not listed above. `HtmlUrlScrubber` also strips every `on*` attribute from the final HTML as a second line of defense.
   - **Comments are dropped.** That includes MSO conditional comments (`<!--[if mso]>...<![endif]-->`) written in these slots, so Outlook-only markup does not survive in a raw slot. The built-in slots emit their own Outlook and VML markup.
-  - **Links and images.** A link keeps only a scheme from `mail-builder.url_schemes`. An image keeps only `http`, `https`, `cid` or a relative path, so an inline `data:` image in a raw slot is dropped. A relative link is kept.
-  - **Styles.** A `style` attribute is kept, but every declaration that contains `url(`, `expression(`, `javascript:`, `behavior`, `-moz-binding`, `@import`, `image-set(` (or `image(`, `src(`, `element(`, `paint(`, `cross-fade(`), a backslash escape or a comment is removed. `<style>` elements are removed, so raw slots cannot carry a stylesheet.
-  - **Merge tags.** `{{ tag }}` and `{% block %}` pass through byte for byte, also inside `href`, `src` and `style`. A tag inside an attribute has its quote characters written as entities, so it cannot close the attribute. Whatever a tag resolves to is checked by the send layer. The parser may close or reorder markup that a `{% if %}` block opens in one branch and closes in another, so keep a block's tags balanced.
+  - **Links and images.** A link keeps only a scheme from `mail-builder.url_schemes`. An image keeps only `http`, `https`, `cid`, a relative path, or a base64 `data:image/png`, `jpeg`, `jpg`, `gif` or `webp` value, so an image pasted into the editor still embeds. Other `data:` URIs, SVG included, are dropped. The `background` attribute on `table` and `td` keeps only an `http` or `https` address. A relative link is kept.
+  - **Styles.** A `style` attribute is kept, but every declaration that contains `expression(`, `javascript:`, `behavior`, `-moz-binding`, `@import`, `image-set(` (or `image(`, `src(`, `element(`, `paint(`, `cross-fade(`), a backslash escape or a comment is removed. So is every `url(` with two exceptions: `background` and `background-image` may hold one `url()` whose address is a single `http://` or `https://` literal, written bare or in single or double quotes, with no whitespace, escape, comment, parenthesis or merge tag inside it (`background:#000 url(https://cdn.example.com/hero.jpg) no-repeat` works). `<style>` elements are removed, so raw slots cannot carry a stylesheet.
+  - **Merge tags.** In text, `{{ tag | filter }}` passes through byte for byte. Inside a tag's markup, such as `href`, `src` or `style`, a `{{ }}` tag is kept only when it matches `{{ path | filter }}`: a dotted path of letters, digits, `_` and `.`, then any number of filters, each with at most one argument that is a bare word (`[A-Za-z0-9_.-]`) or a quoted string without quotes, `<`, `>`, `&`, backslash or line breaks. A double-quoted argument is rewritten with single quotes. A tag that does not match is dropped, a `{% %}` tag is always dropped, and stray braces in a tag are dropped, so a tag cannot close an attribute or open another one. Quotes inside a kept tag are not turned into entities, so `<a href="{{ prefs_url | default('https://example.com/prefs') }}">` comes out as written. Whatever a tag resolves to is checked by the send layer.
+  - **Block merge tags.** The interpolator evaluates `{% if %}...{% endif %}` by deleting text, even across tags, and an HTML parser moves text out of tables. So the `html` profile does not support block merge tags. Every `{% ... %}` tag and every Handlebars style `{{#if}}`, `{{#each}}`, `{{#unless}}`, `{{else}}` and `{{/if}}` tag is removed together with everything it wraps (`if`, `for`, `unless`, `each`, `with`), and an unbalanced block tag is removed alone, so content meant for one audience is never shown to another. Variable tags still work. To show content to part of the audience, use the slot's visibility rules. For a list of items, use the `order_receipt` slot. The `rich` profile keeps `{% if %}` blocks in text, and removes table tags first so a block that wraps a table row still wraps its text.
+  - **Size cap.** A field over `mail-builder.raw_html_max_bytes` (default 100000 bytes) is refused with `Odden\MailBuilder\Exceptions\RawHtmlTooLargeException`, an `InvalidArgumentException`, before any parsing. The editor preview turns it into a validation error on the slot. Build a large email from slots instead of pasting it into one field.
   - **Normalization.** The sanitizer writes canonical HTML: attribute values are quoted, `=`, `+` and `@` in text and attributes are written as numeric entities, and `<tbody>` is added to tables as browsers do.
 - **Plain text.** The plain-text fallback prints a link only when it passes the same URL rules, and prints just the link text otherwise.
 - **Exports.** `TemplatePackageExporter` checks URLs with the URL rules, theme colors with the color rules, and body text with `RawHtmlSanitizer`, and escapes the subject, font family and slot type it writes into MJML. The ZIP's `index.html` is scrubbed.
 - **Inline images.** `CidImageEmbedder` never attaches an SVG or any `data:` image outside the raster types above. It blanks the `src` instead.
 - **Preview.** The editor preview does not fetch `feed_url` feeds, so it never makes a request from the server for content a browser sent. It shows the slot's configured static items.
+
+What the raw sanitizer drops from pasted marketing HTML, so you know before you paste a template from another tool:
+
+- `<style>` blocks and `<link>` web fonts. Inline the CSS first, or use the theme's font settings.
+- MSO conditional comments and VML (`<!--[if mso]>`, `<v:roundrect>`, `<o:p>`), which Outlook layouts rely on.
+- `id` and `name` attributes, and with them in-page anchors.
+- `figure` and `figcaption`, which are unwrapped, along with `section`, `article`, `header`, `footer`, `nav` and other sectioning elements.
+- Forms, inputs, buttons, SVG and iframes.
+- Block merge tags in the `html` slot, with the content they wrap.
+- Any one field over the size cap.
+
+A large pasted template is better built from slots, which carry their own Outlook-safe markup and are not limited by the cap. Use `MailBuilder::importHtml()` to turn HTML into slots.
+
+The supported `symfony/html-sanitizer` range is `^7.2 || ^8.0`. On PHP 8.3 the sanitizer uses the Masterminds HTML5 parser instead of PHP 8.4's native one. The test suite runs on one PHP version, so the Masterminds path is untested here.
 
 What stays with the host app:
 
