@@ -12,6 +12,7 @@ use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
 use Odden\MailBuilder\Schema\FieldType;
 use Odden\MailBuilder\Schema\SlotField;
 use Odden\MailBuilder\Schema\SlotSchemaRegistry;
+use Odden\MailBuilder\Support\HtmlUrlScrubber;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
 use Odden\MailBuilder\Support\SafeColor;
 use Odden\MailBuilder\Support\SafeUrl;
@@ -117,7 +118,7 @@ class EmailSlotCompiler
             $rawHtml = EmailImageOptimizer::optimize($rawHtml);
         }
 
-        return $rawHtml;
+        return HtmlUrlScrubber::scrub($rawHtml);
     }
 
     /**

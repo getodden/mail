@@ -7,6 +7,7 @@ namespace Odden\MailBuilder\Compilers;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Support\HtmlUrlScrubber;
 
 class AmpEmailCompiler
 {
@@ -50,7 +51,7 @@ class AmpEmailCompiler
 
         $bodyContent = implode("\n", $bodyParts);
 
-        return <<<HTML
+        return HtmlUrlScrubber::scrub(<<<HTML
 <!doctype html>
 <html ⚡4email data-css-strict>
 <head>
@@ -72,7 +73,7 @@ class AmpEmailCompiler
   </div>
 </body>
 </html>
-HTML;
+HTML);
     }
 
     protected function compileAmpHero(EmailSlot $slot, string $primaryColor): string
