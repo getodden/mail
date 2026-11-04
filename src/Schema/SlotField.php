@@ -11,6 +11,9 @@ use Closure;
  *
  * Fields marked `advanced` are read by the slot's view but are not part of the basic form: an editor shows them in a
  * separate style group, and the Filament form leaves them out.
+ *
+ * A field marked `rawHtml` holds markup that the slot's view prints unescaped: the compiler passes it through the HTML
+ * sanitizer, as it does a rich text field.
  */
 final class SlotField
 {
@@ -34,6 +37,7 @@ final class SlotField
         public readonly bool $advanced = false,
         public readonly int $defaultItems = 0,
         public readonly int $itemColumns = 0,
+        public readonly bool $rawHtml = false,
     ) {}
 
     /**

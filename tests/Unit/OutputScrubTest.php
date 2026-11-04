@@ -67,7 +67,8 @@ class OutputScrubTest extends TestCase
 
         $this->assertNoScript($plain);
         $this->assertDoesNotMatchRegularExpression('/&#106;avascript/i', $encoded);
-        $this->assertStringContainsString('href="#"', $encoded);
+        $this->assertDoesNotMatchRegularExpression('/<a[^>]*href/i', $encoded);
+        $this->assertStringContainsString('>x</a>', $encoded);
     }
 
     public function test_html_slot_unquoted_and_single_quoted_attributes_are_scrubbed(): void

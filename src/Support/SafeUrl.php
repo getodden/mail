@@ -14,6 +14,14 @@ final class SafeUrl
 
     private const HOST_WITH_PORT = '#^[a-z0-9-]+(?:\.[a-z0-9-]+)+:\d+(?:[/?\#]|$)#i';
 
+    /**
+     * @return list<string>
+     */
+    public static function linkSchemes(): array
+    {
+        return self::LINK_SCHEMES;
+    }
+
     public static function for(string $url, bool $forImage = false): string
     {
         $url = trim($url);

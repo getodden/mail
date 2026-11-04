@@ -306,10 +306,11 @@ class InputHardeningTest extends TestCase
         $this->assertStringNotContainsString('<script>x', app(EmailSlotCompiler::class)->compileDocument($document));
     }
 
-    public function test_unknown_keys_and_raw_html_are_untouched(): void
+    public function test_raw_html_is_sanitized_and_unknown_keys_are_untouched(): void
     {
-        $html = $this->compile(SlotType::Html, ['html' => '<a href="javascript:void(0)">raw</a>']);
+        $html = $this->compile(SlotType::Html, ['html' => '<a href="javascript:void(0)">raw</a>', 'unknown_key' => 'javascript:void(0)']);
 
-        $this->assertStringContainsString('javascript:void(0)', $html);
+        $this->assertStringNotContainsString('javascript:void(0)', $html);
+        $this->assertStringContainsString('raw</a>', $html);
     }
 }

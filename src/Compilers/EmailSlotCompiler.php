@@ -9,13 +9,11 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
-use Odden\MailBuilder\Schema\FieldType;
-use Odden\MailBuilder\Schema\SlotField;
-use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\MergeTagGuard;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
 use Odden\MailBuilder\Support\SafeColor;
-use Odden\MailBuilder\Support\SafeUrl;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 use Odden\MailBuilder\Themes\FontManager;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
@@ -24,9 +22,6 @@ class EmailSlotCompiler
     protected ?MergeTagInterpolator $interpolator = null;
 
     protected ?CssToInlineStyles $inliner = null;
-
-    /** @var array<string, list<SlotField>> */
-    protected array $fieldsByKey = [];
 
     /**
      * @param  array<string, mixed>  $defaultConfig
@@ -123,25 +118,9 @@ class EmailSlotCompiler
 
     protected function inlineCss(CssToInlineStyles $inliner, string $html): string
     {
-        do {
-            $nonce = bin2hex(random_bytes(8));
-        } while (str_contains($html, $nonce));
+        [$protected, $mergeTags] = MergeTagGuard::protect($html);
 
-        $originals = [];
-        $protected = preg_replace_callback(
-            '/\{\{[^<>]*?\}\}|\{%[^<>]*?%\}/',
-            static function (array $match) use (&$originals, $nonce): string {
-                $token = 'mbtag'.$nonce.'n'.count($originals).'x';
-                $originals[$token] = $match[0];
-
-                return $token;
-            },
-            $html,
-        ) ?? $html;
-
-        $inlined = $inliner->convert($protected);
-
-        return $originals === [] ? $inlined : strtr($inlined, $originals);
+        return MergeTagGuard::restore($inliner->convert($protected), $mergeTags);
     }
 
     /**
@@ -190,132 +169,14 @@ class EmailSlotCompiler
             );
         }
 
-        $data = $this->sanitize($data, $this->fieldsFor($slot->key()));
-        $slot = new EmailSlot(type: $slot->type, data: $data, visibility: $slot->visibility);
+        $slot = SlotDataSanitizer::slot(new EmailSlot(type: $slot->type, data: $data, visibility: $slot->visibility));
+        $data = $slot->data;
 
         return $this->view->make($viewName, [
             'slot' => $slot,
             'data' => $data,
             'theme' => SafeColor::theme(array_merge($this->defaultConfig, $theme)),
         ])->render();
-    }
-
-    /**
-     * @return list<SlotField>
-     */
-    protected function fieldsFor(string $key): array
-    {
-        if (SlotType::tryFrom($key) === null) {
-            return array_values(SlotSchemaRegistry::forKey($key)->fields ?? []);
-        }
-
-        return $this->fieldsByKey[$key] ??= array_values(SlotSchemaRegistry::forKey($key)->fields ?? []);
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @param  array<int, SlotField>  $fields
-     * @return array<string, mixed>
-     */
-    protected function sanitize(array $data, array $fields): array
-    {
-        foreach ($fields as $field) {
-            $value = $data[$field->key] ?? null;
-
-            if (in_array($field->type, [FieldType::Items, FieldType::Tags], true) && $value !== null && ! is_array($value)) {
-                unset($data[$field->key]);
-
-                continue;
-            }
-
-            if ($field->type === FieldType::Items && is_array($value)) {
-                $data[$field->key] = array_map(
-                    fn (mixed $item): mixed => is_array($item) ? $this->sanitize($item, $field->items) : $item,
-                    $value,
-                );
-
-                continue;
-            }
-
-            if ($field->type === FieldType::Number) {
-                $this->sanitizeNumber($data, $field->key, $value);
-
-                continue;
-            }
-
-            if ($field->type === FieldType::Select) {
-                $this->sanitizeSelect($data, $field, $value);
-
-                continue;
-            }
-
-            if (! is_string($value)) {
-                continue;
-            }
-
-            match ($field->type) {
-                FieldType::Url => $data[$field->key] = SafeUrl::for($value),
-                FieldType::Image => $data[$field->key] = SafeUrl::for($value, true),
-                FieldType::Color => $this->sanitizeColor($data, $field->key, $value),
-                default => null,
-            };
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function sanitizeNumber(array &$data, string $key, mixed $value): void
-    {
-        if ($value === null) {
-            return;
-        }
-
-        if ((is_int($value) || is_float($value) || is_string($value)) && is_numeric($value)) {
-            $number = $value + 0;
-
-            if (! is_float($number) || is_finite($number)) {
-                $data[$key] = $number;
-
-                return;
-            }
-        }
-
-        unset($data[$key]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function sanitizeSelect(array &$data, SlotField $field, mixed $value): void
-    {
-        if ($value === null || $field->options === []) {
-            return;
-        }
-
-        $allowed = array_map(fn (array $option): string => (string) $option['value'], $field->options);
-
-        if (! is_scalar($value) || ! in_array((string) $value, $allowed, true)) {
-            unset($data[$field->key]);
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function sanitizeColor(array &$data, string $key, string $value): void
-    {
-        $color = SafeColor::for($value);
-
-        if ($color === null) {
-            unset($data[$key]);
-
-            return;
-        }
-
-        $data[$key] = $color;
     }
 
     /**

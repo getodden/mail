@@ -447,7 +447,7 @@ final class SlotSchemaRegistry
     private static function html(): SlotSchema
     {
         return new SlotSchema(SlotType::Html, 'code-bracket', [
-            new SlotField('html', FieldType::Textarea, 'Raw HTML Code', required: true, rows: 8, fullWidth: true),
+            new SlotField('html', FieldType::Textarea, 'Raw HTML Code', required: true, rows: 8, fullWidth: true, rawHtml: true),
             new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
         ]);
     }
