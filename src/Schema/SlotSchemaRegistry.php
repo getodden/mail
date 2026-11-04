@@ -627,7 +627,7 @@ final class SlotSchemaRegistry
                 ['value' => '10', 'label' => '0 to 10 Scale (Industry Standard NPS)'],
                 ['value' => '5', 'label' => '1 to 5 Stars / CSAT Scale'],
             ]),
-            new SlotField('base_url', FieldType::Text, 'Destination Rating Endpoint / Webhook', required: true, default: '/feedback/nps/{{nps_token}}', help: 'Each button appends /{score} to this URL.'),
+            new SlotField('base_url', FieldType::Url, 'Destination Rating Endpoint / Webhook', required: true, default: '/feedback/nps/{{nps_token}}', help: 'Each button appends /{score} to this URL.'),
             new SlotField('low_label', FieldType::Text, 'Lowest Score Meaning', required: true, default: 'Not at all likely'),
             new SlotField('high_label', FieldType::Text, 'Highest Score Meaning', required: true, default: 'Extremely likely'),
         ], columns: 2, supportsVisibility: true);

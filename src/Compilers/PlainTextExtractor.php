@@ -8,6 +8,7 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Schema\ProvidesPlainText;
+use Odden\MailBuilder\Support\SafeUrl;
 use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 class PlainTextExtractor
@@ -102,6 +103,11 @@ class PlainTextExtractor
         $text = (string) preg_replace_callback('/<a[^>]+href=([\'"])(.*?)\1[^>]*>(.*?)<\/a>/is', function (array $matches): string {
             $url = $matches[2];
             $label = trim(strip_tags($matches[3]));
+            $decoded = SafeUrl::decodeEntities($url);
+
+            if (SafeUrl::for($decoded) !== trim($decoded)) {
+                return $label;
+            }
 
             return $label !== '' && $label !== $url ? "{$label} ({$url})" : $url;
         }, $html);

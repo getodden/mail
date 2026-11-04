@@ -24,8 +24,6 @@ final class HtmlUrlScrubber
 
     private const MENTIONS = '/(?:href|src|action|formaction|background|poster|data|srcset|values)\s*=/i';
 
-    private const DECODE_PASSES = 3;
-
     public static function scrub(string $html): string
     {
         $mentionsAttribute = preg_match(self::MENTIONS, $html);
@@ -65,14 +63,14 @@ final class HtmlUrlScrubber
                 }
 
                 if (in_array($name, self::URL_LIST_ATTRIBUTES, true)) {
-                    return self::isSafeList(self::decode($raw)) ? $match[0] : '';
+                    return self::isSafeList(SafeUrl::decodeEntities($raw)) ? $match[0] : '';
                 }
 
                 if (! in_array($name, self::URL_ATTRIBUTES, true)) {
                     return $match[0];
                 }
 
-                $decoded = self::decode($raw);
+                $decoded = SafeUrl::decodeEntities($raw);
                 $media = in_array($name, self::MEDIA_ATTRIBUTES, true) && in_array($tag, self::MEDIA_TAGS, true);
                 $safe = SafeUrl::for($decoded, $media);
 
@@ -97,20 +95,5 @@ final class HtmlUrlScrubber
         }
 
         return true;
-    }
-
-    private static function decode(string $value): string
-    {
-        for ($pass = 0; $pass < self::DECODE_PASSES; $pass++) {
-            $decoded = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-            if ($decoded === $value) {
-                break;
-            }
-
-            $value = $decoded;
-        }
-
-        return $value;
     }
 }
