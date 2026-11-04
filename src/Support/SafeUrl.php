@@ -21,7 +21,7 @@ final class SafeUrl
      */
     public static function linkSchemes(): array
     {
-        $configured = config('mail-builder.url_schemes', self::DEFAULT_LINK_SCHEMES);
+        $configured = PackageConfig::get('mail-builder.url_schemes', self::DEFAULT_LINK_SCHEMES);
 
         return array_values(array_unique(array_map(
             static fn (string $scheme): string => strtolower(trim($scheme)),
