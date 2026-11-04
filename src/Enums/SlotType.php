@@ -36,6 +36,7 @@ enum SlotType: string
     case DataTable = 'data_table';
     case LabeledDivider = 'labeled_divider';
     case Event = 'event';
+    case Gallery = 'gallery';
 
     public function label(): string
     {
@@ -70,6 +71,7 @@ enum SlotType: string
             self::DataTable => 'Data & Comparison Table',
             self::LabeledDivider => 'Labeled Section Divider',
             self::Event => 'Event Details & RSVP',
+            self::Gallery => 'Image Gallery Grid',
         };
     }
 
@@ -107,6 +109,7 @@ enum SlotType: string
             self::DataTable => 'Table',
             self::LabeledDivider => 'Section label',
             self::Event => 'Event',
+            self::Gallery => 'Gallery',
         };
     }
 
@@ -127,6 +130,7 @@ enum SlotType: string
             self::VideoCard => SlotGroup::Content,
             self::Html => SlotGroup::Content,
             self::Event => SlotGroup::Content,
+            self::Gallery => SlotGroup::Content,
             self::TwoColumn => SlotGroup::Layout,
             self::ThreeColumn => SlotGroup::Layout,
             self::FourColumn => SlotGroup::Layout,
@@ -179,6 +183,7 @@ enum SlotType: string
             self::DataTable => 'Structured multi-column data comparison table with headers and zebra striping.',
             self::LabeledDivider => 'Visual separator rule with centered text label or pill.',
             self::Event => 'Event card with title, date, time, location, description, and a registration button.',
+            self::Gallery => 'Responsive two or three column image grid with optional captions and links.',
         };
     }
 
@@ -215,6 +220,7 @@ enum SlotType: string
             self::DataTable => 'mail-builder::slots.data-table',
             self::LabeledDivider => 'mail-builder::slots.labeled-divider',
             self::Event => 'mail-builder::slots.event',
+            self::Gallery => 'mail-builder::slots.gallery',
         };
     }
 }

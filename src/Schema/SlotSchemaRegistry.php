@@ -38,6 +38,7 @@ final class SlotSchemaRegistry
             SlotType::AsymmetricColumns,
             SlotType::Features,
             SlotType::Event,
+            SlotType::Gallery,
             SlotType::Testimonial,
             SlotType::StatBox,
             SlotType::SocialLinks,
@@ -79,6 +80,7 @@ final class SlotSchemaRegistry
             SlotType::AsymmetricColumns => self::asymmetricColumns(),
             SlotType::Features => self::features(),
             SlotType::Event => self::event(),
+            SlotType::Gallery => self::gallery(),
             SlotType::Testimonial => self::testimonial(),
             SlotType::StatBox => self::statBox(),
             SlotType::SocialLinks => self::socialLinks(),
@@ -272,6 +274,23 @@ final class SlotSchemaRegistry
             new SlotField('button_url', FieldType::Url, 'Button URL', placeholder: 'https://...'),
             new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
         ], columns: 2, supportsVisibility: true);
+    }
+
+    private static function gallery(): SlotSchema
+    {
+        return new SlotSchema(SlotType::Gallery, 'photo', [
+            new SlotField('heading', FieldType::Text, 'Gallery Heading', fullWidth: true),
+            new SlotField('columns', FieldType::Select, 'Columns', default: 3, options: [
+                ['value' => 2, 'label' => '2 columns'],
+                ['value' => 3, 'label' => '3 columns'],
+            ]),
+            new SlotField('images', FieldType::Items, 'Images', fullWidth: true, defaultItems: 3, itemColumns: 2, items: [
+                new SlotField('image_url', FieldType::Image, 'Image URL', required: true, placeholder: 'https://...'),
+                new SlotField('alt', FieldType::Text, 'Alt Text'),
+                new SlotField('caption', FieldType::Text, 'Caption'),
+                new SlotField('link_url', FieldType::Url, 'Link URL', placeholder: 'https://...'),
+            ]),
+        ], supportsVisibility: true);
     }
 
     private static function divider(): SlotSchema

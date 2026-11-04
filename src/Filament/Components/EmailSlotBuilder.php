@@ -61,6 +61,7 @@ class EmailSlotBuilder
                 self::getDataTableBlock(),
                 self::getLabeledDividerBlock(),
                 self::getEventBlock(),
+                self::getGalleryBlock(),
                 self::getHtmlBlock(),
                 ...array_map(
                     fn (CustomSlotType $type): Block => SchemaBlockFactory::fromSchema($type->schema()),
@@ -203,6 +204,14 @@ class EmailSlotBuilder
     public static function getEventBlock(): Block
     {
         return SchemaBlockFactory::make(SlotType::Event);
+    }
+
+    /**
+     * Gallery Block Definition.
+     */
+    public static function getGalleryBlock(): Block
+    {
+        return SchemaBlockFactory::make(SlotType::Gallery);
     }
 
     /**

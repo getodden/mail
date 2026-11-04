@@ -76,6 +76,7 @@ class PlainTextExtractor
             SlotType::DataTable => $this->extractDataTable($slot),
             SlotType::LabeledDivider => $this->extractLabeledDivider($slot),
             SlotType::Event => $this->extractEvent($slot),
+            SlotType::Gallery => $this->extractGallery($slot),
         };
     }
 
@@ -282,6 +283,27 @@ class PlainTextExtractor
         $buttonUrl = (string) $slot->get('button_url', '');
         if ($buttonText !== '' && $buttonUrl !== '') {
             $lines[] = "{$buttonText}: {$buttonUrl}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    protected function extractGallery(EmailSlot $slot): string
+    {
+        $heading = (string) $slot->get('heading', '');
+        /** @var list<array{image_url?: string, alt?: string, caption?: string, link_url?: string}> $images */
+        $images = $slot->get('images', []);
+
+        $lines = [];
+        if ($heading !== '') {
+            $lines[] = "=== {$heading} ===";
+        }
+
+        foreach ($images as $image) {
+            $label = (string) (($image['caption'] ?? '') !== '' ? $image['caption'] : ($image['alt'] ?? ''));
+            $link = (string) ($image['link_url'] ?? '');
+            $line = '* '.($label !== '' ? $label : 'Image');
+            $lines[] = $link !== '' ? "{$line} ({$link})" : $line;
         }
 
         return implode("\n", $lines);
