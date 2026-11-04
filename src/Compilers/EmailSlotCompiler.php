@@ -109,7 +109,7 @@ class EmailSlotCompiler
         }
 
         if ($inlineCss && $this->inliner !== null) {
-            $rawHtml = $this->inliner->convert($rawHtml);
+            $rawHtml = $this->inlineCss($rawHtml);
             $rawHtml = preg_replace('/^<!doctype html>/i', '<!DOCTYPE html>', $rawHtml) ?? $rawHtml;
         }
 
@@ -119,6 +119,29 @@ class EmailSlotCompiler
         }
 
         return HtmlUrlScrubber::scrub($rawHtml);
+    }
+
+    protected function inlineCss(string $html): string
+    {
+        do {
+            $nonce = bin2hex(random_bytes(8));
+        } while (str_contains($html, $nonce));
+
+        $originals = [];
+        $protected = preg_replace_callback(
+            '/\{\{[^<>]*?\}\}|\{%[^<>]*?%\}/',
+            static function (array $match) use (&$originals, $nonce): string {
+                $token = 'mbtag'.$nonce.'n'.count($originals).'x';
+                $originals[$token] = $match[0];
+
+                return $token;
+            },
+            $html,
+        ) ?? $html;
+
+        $inlined = $this->inliner->convert($protected);
+
+        return $originals === [] ? $inlined : strtr($inlined, $originals);
     }
 
     /**
