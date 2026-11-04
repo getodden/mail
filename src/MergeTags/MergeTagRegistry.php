@@ -89,14 +89,12 @@ class MergeTagRegistry
     }
 
     /**
-     * Interpolate merge tags within a given string using the provided context or sample data.
-     *
      * @param  array<string, mixed>|null  $context
      */
-    public function interpolate(string $content, ?array $context = null, bool $escape = false): string
+    public function interpolate(string $content, ?array $context = null, bool $escape = false, bool $allowRaw = false): string
     {
         $context ??= $this->sampleContext();
 
-        return $this->interpolator->interpolate($content, $context, $escape);
+        return $this->interpolator->interpolate($content, $context, $escape, $allowRaw);
     }
 }

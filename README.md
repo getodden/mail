@@ -6,7 +6,7 @@
 
 A modular, Outlook-bulletproof email building, auditing, and compilation engine for Laravel applications.
 
-Build an email from 29 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
+Build an email from 31 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
 
 [![The drag-and-drop editor: adding a quote block, typing its text, moving it up the email and switching to the mobile preview](docs/editor.gif)](https://odden.io/open-source/mail-builder)
 
@@ -14,13 +14,13 @@ Build an email from 29 responsive blocks (in code, in a Filament form, or in a d
 
 Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://odden.io).
 
-**Status:** All 29 slot types are rendered by the compiler, described in the slot schema, and editable in both the Filament builder and the drag-and-drop editor.
+**Status:** All 31 slot types are rendered by the compiler, described in the slot schema, and editable in both the Filament builder and the drag-and-drop editor.
 
 ---
 
 ## Key Features
 
-- **29 Modular Responsive Slots:** Pre-built responsive components that collapse smoothly to 100% width on mobile devices, with Microsoft Outlook MSO conditional table compatibility.
+- **31 Modular Responsive Slots:** Pre-built responsive components that collapse smoothly to 100% width on mobile devices, with Microsoft Outlook MSO conditional table compatibility.
 - **Universal Compilation Engine:** Compile modular slots or structured `EmailDocument` instances into inlined responsive HTML (`EmailSlotCompiler`) or interactive AMP for Email (`AmpEmailCompiler`).
 - **Liquid-Style Personalization:** Fast token interpolation supporting uppercase, lowercase, capitalize, date formatting, currency, number, pluralize, default values, and inline conditionals (`{% if condition %}...{% else %}...{% endif %}`).
 - **Deliverability & Spam Auditor:** Automatic pre-flight auditing scoring unsubscribe links, image alt text, subject lines, mailing address, Gmail clipping, Outlook rendering and WCAG contrast, and live DNS deliverability checks (SPF, DMARC, BIMI).
@@ -55,6 +55,8 @@ php artisan vendor:publish --tag=mail-builder-views
 MAIL_BUILDER_COMPANY_NAME="Acme Inc."   # defaults to APP_NAME
 MAIL_BUILDER_ADDRESS="123 Example St, Springfield"
 ```
+
+`raw_html_max_bytes` (default `100000`) is the largest a rich text or raw HTML field may be, and `max_document_bytes` (default `1500000`) is the largest the slots of one email may add up to; see Security.
 
 CAN-SPAM and similar laws require a physical mailing address in marketing email, so set `MAIL_BUILDER_ADDRESS` or pass `address` to each footer slot.
 
@@ -167,8 +169,15 @@ including a `default` fallback, is left as written. If a value really is markup 
 template: `{{ order_table | raw }}`. The plain-text part and the subject are text and are not escaped; the subject is always one line,
 and `unsubscribe_url` / `listUnsubscribeUrl` must be an http(s) or mailto address to become a `List-Unsubscribe` header.
 
+The `raw` filter is honored only for a template string you wrote. `TemplateMailable` accepts it when you pass an HTML string, and
+ignores it (the value is escaped) when you pass a document or slot arrays, because a tenant user authored those. The same goes for
+`compileDocument()` with `interpolate: true`, which always escapes and never honors `raw`. `MailBuilder::interpolate()` and
+`MergeTagInterpolator::interpolate()` ignore `raw` unless you pass `allowRaw: true`; never do that for HTML a tenant user authored.
+
 `MailBuilder::interpolate($content, $context)` does not escape (callers that escape their own values rely on that); pass
 `escape: true` to escape.
+
+Conditionals (`{% if %}`) work in text and in `body_text`, one block at a time: blocks must be balanced and cannot be nested, or the email is rejected. They are not supported in the raw `html` slot; see Security. To show content to part of the audience, prefer the slot's visibility rules.
 
 ---
 
@@ -270,7 +279,7 @@ return response()->json(SlotSchemaRegistry::toArray()); // everything an editor 
 
 A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `tags`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
 
-All 29 slot types are described, so the editor and the Filament blocks can edit every one of them (see [Supported Slot Types](#supported-slot-types-29-total)). Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
+All 31 slot types are described, so the editor and the Filament blocks can edit every one of them (see [Supported Slot Types](#supported-slot-types-31-total)). Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
 
 ### 8. Drag-and-drop editor
 
@@ -349,7 +358,7 @@ The field's theme wins over a theme sent by the browser.
 - **It follows the form.** When the form changes the state itself, for example an action that applies a preset with `$set('slots', ...)`, the editor shows the new content.
 - A disabled field is shown but cannot be edited.
 
-## Supported Slot Types (29 Total)
+## Supported Slot Types (31 Total)
 
 | Slot Type | Key | Description |
 | :--- | :--- | :--- |
@@ -362,6 +371,8 @@ The field's theme wins over a theme sent by the browser.
 | **4-Column Wall** | `four_column` | Partner logo trust wall or compact icon links |
 | **Asymmetric Split** | `asymmetric_columns` | 1/3 + 2/3 editorial sidebar split |
 | **Feature List** | `features` | Bulleted list with icons, bold titles, and descriptions |
+| **Event Details** | `event` | Event card with date, time, location, description, and a registration button |
+| **Image Gallery** | `gallery` | Two or three column image grid with captions and links that stacks on mobile (renders at most 12 images) |
 | **Testimonial** | `testimonial` | Quote callout with star rating and author attribution |
 | **Stat Box** | `stat_box` | Key metric numbers and percentage badges |
 | **Divider Line** | `divider` | Horizontal rule or spacer with configurable height |
@@ -380,10 +391,131 @@ The field's theme wins over a theme sent by the browser.
 | **RSS Article Feed** | `rss_feed` | Syndicated blog digest with publication dates |
 | **Product Catalog** | `product_catalog` | Ecommerce cards with compare-at pricing and buy CTAs |
 | **Coupon Code** | `coupon_code` | Promo voucher card with dashed border and expiry |
-| **Footer & Compliance**| `footer` | CAN-SPAM / GDPR address and unsubscribe link |
+| **Footer & Compliance**| `footer` | CAN-SPAM / GDPR address, optional required notice or warning, and unsubscribe link |
 | **Custom Raw HTML** | `html` | Bespoke HTML code component |
 
 ---
+
+## Custom Slot Types
+
+Register your own slot type with the `SlotRegistry` singleton. A registered slot compiles, exports, validates, previews, appears in `SlotSchemaRegistry::toArray()`, and gets a block in the Filament `EmailSlotBuilder`.
+
+```php
+use Odden\MailBuilder\Enums\SlotGroup;
+use Odden\MailBuilder\Schema\CustomSlotType;
+use Odden\MailBuilder\Schema\FieldType;
+use Odden\MailBuilder\Schema\SlotField;
+use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Schema\SlotSchema;
+
+final class SpotlightSlot implements CustomSlotType
+{
+    public function key(): string
+    {
+        return 'spotlight';
+    }
+
+    public function label(): string
+    {
+        return 'Product Spotlight';
+    }
+
+    public function shortLabel(): string
+    {
+        return 'Spotlight';
+    }
+
+    public function description(): string
+    {
+        return 'Highlights one product.';
+    }
+
+    public function group(): SlotGroup
+    {
+        return SlotGroup::Commerce;
+    }
+
+    public function view(): string
+    {
+        return 'emails.slots.spotlight';
+    }
+
+    public function schema(): SlotSchema
+    {
+        return new SlotSchema($this, 'star', [
+            new SlotField('headline', FieldType::Text, 'Headline', required: true),
+            new SlotField('blurb', FieldType::RichText, 'Blurb'),
+        ]);
+    }
+}
+
+app(SlotRegistry::class)->register(new SpotlightSlot);
+```
+
+- **Keys.** A key matches `/^[a-z][a-z0-9_]*$/`, cannot collide with a built-in slot type, and can be registered once. The schema must be built for the same key. `register()` throws `InvalidArgumentException` otherwise.
+- **Registry methods.** `register()`, `get()`, `has()`, `keys()`, `all()` and `flush()`.
+- **Unescaped fields.** A view that prints a field unescaped must declare the field `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`, so the value goes through `RawHtmlSanitizer`.
+- **Plain text.** Implement `Odden\MailBuilder\Schema\ProvidesPlainText` and its `plainText(array $data): string` method to control the slot's plain-text output. Without it, the plain-text fallback extracts text from the compiled HTML.
+- **Lookups.** `SlotSchemaRegistry::forKey($key)` returns the schema for a built-in or custom key. `EmailSlot::fromArray()` resolves a custom key through the registry.
+
+## Security
+
+Tenant users can author what this package renders, so untrusted input is sanitized in three places. None of it relies on the author's markup being well formed.
+
+1. **Schema layer.** Before a view renders, `SlotDataSanitizer` cleans each slot's data from the slot's schema, for built-in and custom slots alike. The plain-text fallback reads the same sanitized data, so the text never shows a URL or an image the HTML dropped.
+2. **Output layer.** After merge tags are interpolated and CSS is inlined, `HtmlUrlScrubber` rewrites every `href`, `xlink:href`, `src`, `action`, `formaction`, `background`, `poster` and `data` attribute in the final HTML (quoted or unquoted, inside conditional comments and VML tags too), drops `srcset`, and drops an animation `values` list that holds an unsafe URL. The AMP compiler sanitizes its slots' data and raw content the same way and runs the scrubber on its output. Entities are decoded first, so `&#106;avascript:` is caught. A value that passes is left byte for byte as written. This layer is a safety net behind the allowlist sanitizer, because it is built from patterns. It fails closed: when the regex engine gives up, `scrub()` throws `Odden\MailBuilder\Exceptions\UnscrubbableHtmlException` and never returns the page unscrubbed.
+3. **Send layer.** A tag such as `{{ link }}` or `{{ x | default(javascript:alert(1)) }}` only resolves when `TemplateMailable` interpolates, after the compiler's scrub. `TemplateMailable` therefore runs `HtmlUrlScrubber` again on the interpolated HTML, for slot templates and for HTML string templates alike.
+
+The rules:
+
+- **URL and image fields.** A value that starts with a URI scheme must be one of the schemes in `mail-builder.url_schemes`. The default list is `http`, `https`, `mailto`, `tel`, `sms`, `webcal`, `webcals`, `whatsapp`, `skype`, `geo`, `itms` and `itms-apps`. Add your own app scheme to the list, and the raw HTML sanitizer keeps links with it too. Image fields allow only `http`, `https`, `mailto`, `tel`, `cid` and `data:image/png|jpeg|jpg|gif|webp|avif|bmp;base64,`, never SVG, whatever the list says. Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs, `{{merge_tags}}` and a host with a port such as `example.com:8080/x` or `localhost:8000/x` pass unchanged. Nested `items` fields are checked too.
+- **Color fields.** Only hex colors, `rgb()`, `rgba()`, `hsl()`, `hsla()` (letters such as `120deg` are allowed inside the parentheses) and plain color keywords are accepted. Any other value is dropped so the view's default applies, which stops a color from injecting extra CSS declarations. An empty color is dropped too, so it falls back to the default instead of rendering as blank. Theme values whose key ends in `_color` are checked the same way.
+- **Number and select fields.** A number field is cast to an int or float and a non-numeric value is dropped. A select value must be one of the field's options, otherwise it is dropped. A list field that is not an array is dropped.
+- **Raw HTML.** The `body_text` and `html` slots print author HTML. Every field the schema marks as rich text, and the `html` slot's code field, goes through `RawHtmlSanitizer`, an allowlist sanitizer built on `symfony/html-sanitizer` (`^7.2 || ^8.0`). It parses the markup the way a browser does and writes it back out, so an unbalanced quote cannot hide a link from it. A custom slot that prints a field unescaped should declare it as `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`.
+  - **Two profiles.** `RawHtmlSanitizer::sanitize($html, $profile)` takes `'html'` (the default, used for the `html` slot and any `rawHtml: true` field) or `'rich'` (used for every `FieldType::RichText` field, such as `body_text`, and for the AMP compiler, the plain-text fallback and the exporter). Both profiles share the rules below, except that `rich` allows no table elements: `table`, `thead`, `tbody`, `tfoot`, `tr`, `td` and `th` are unwrapped and their text is kept. Layout belongs in the `html` slot or in slots.
+  - **Kept.** `table`, `thead`, `tbody`, `tfoot`, `tr`, `td` and `th` (profile `html` only), `div`, `span`, `p`, `br`, `hr`, `a`, `img`, `h1` to `h6`, `ul`, `ol`, `li`, `strong`, `b`, `em`, `i`, `u`, `s`, `small`, `sup`, `sub`, `del`, `ins`, `mark`, `blockquote`, `center`, `font`, `pre` and `code`. Attributes are `style`, `class`, `width`, `height`, `align`, `valign`, `bgcolor`, `border`, `cellpadding`, `cellspacing`, `colspan`, `rowspan`, `nowrap`, `role`, `dir`, `lang`, `alt` and `title`, plus `href` and `target` on `a`, `src` on `img`, `background` on `table` and `td` (profile `html`), and `color`, `face` and `size` on `font`.
+  - **Removed with their contents.** Any other element, including `script`, `style`, `svg`, `math`, `iframe`, `object`, `embed`, `meta`, `link`, `base`, `title`, `textarea` and `select`. Form wrappers and sectioning elements (`form`, `label`, `button`, `section`, `article`, `figure` and similar) are unwrapped and their text is kept.
+  - **Removed from every tag.** Event handler attributes, `srcdoc`, `xlink:href`, `id`, `name`, and any attribute not listed above. `HtmlUrlScrubber` also strips every `on*` attribute from the final HTML as a second line of defense.
+  - **Comments are dropped.** That includes MSO conditional comments (`<!--[if mso]>...<![endif]-->`) written in these slots, so Outlook-only markup does not survive in a raw slot. The built-in slots emit their own Outlook and VML markup.
+  - **Links and images.** A link keeps only a scheme from `mail-builder.url_schemes`. An image keeps only `http`, `https`, `cid`, a relative path, or a base64 `data:image/png`, `jpeg`, `jpg`, `gif` or `webp` value, so an image pasted into the editor still embeds. Other `data:` URIs, SVG included, are dropped. The `background` attribute on `table` and `td` keeps only an `http` or `https` address. A relative link is kept.
+  - **Styles.** A `style` attribute is kept, but every declaration that contains `expression(`, `javascript:`, `behavior`, `-moz-binding`, `@import`, `image-set(` (or `image(`, `src(`, `element(`, `paint(`, `cross-fade(`), a backslash escape or a comment is removed. So is every `url(` with two exceptions: `background` and `background-image` may hold one `url()` whose address is a single `http://` or `https://` literal, written bare or in single or double quotes, with no whitespace, escape, comment, parenthesis or merge tag inside it (`background:#000 url(https://cdn.example.com/hero.jpg) no-repeat` works). `<style>` elements are removed, so raw slots cannot carry a stylesheet.
+  - **Merge tags.** In text, `{{ tag | filter }}` passes through byte for byte. Inside a tag's markup, such as `href`, `src` or `style`, a `{{ }}` tag is kept only when it matches `{{ path | filter }}`: a dotted path of letters, digits, `_` and `.`, then any number of filters, each with at most one argument that is a bare word (`[A-Za-z0-9_.-]`) or a quoted string without quotes, `<`, `>`, `&`, backslash or line breaks. A double-quoted argument is rewritten with single quotes. A tag that does not match is dropped, a `{% %}` tag is always dropped, and stray braces in a tag are dropped, so a tag cannot close an attribute or open another one. Quotes inside a kept tag are not turned into entities, so `<a href="{{ prefs_url | default('https://example.com/prefs') }}">` comes out as written. Whatever a tag resolves to is checked by the send layer.
+  - **Block merge tags.** The interpolator evaluates `{% if %}...{% endif %}` by deleting text, even across tags, and an HTML parser moves text out of tables. So the `html` profile does not support block merge tags. Every `{% ... %}` tag and every Handlebars style `{{#if}}`, `{{#each}}`, `{{#unless}}`, `{{else}}` and `{{/if}}` tag is removed together with everything it wraps (`if`, `for`, `unless`, `each`, `with`, `block`, `macro`, `filter`, `call`, `raw`, `autoescape` and `spaceless`), and an unbalanced block tag is removed alone, so content meant for one audience is never shown to another. Variable tags still work. To show content to part of the audience, use the slot's visibility rules. For a list of items, use the `order_receipt` slot. The `rich` profile keeps `{% if %}` blocks in text, and removes table tags first so a block that wraps a table row still wraps its text.
+  - **Block merge tags elsewhere.** Every text, textarea, tags and rich text field, in nested `items` too, and the email's subject and preview text, must have balanced block tags that are not nested. A block is `{% if %}`, `{% for %}`, `{% unless %}`, `{% each %}` or `{% with %}` and their `{{#if}}`, `{{#each}}`, `{{#unless}}` forms, with an optional `{% else %}` or `{{else}}`. An opener with no closer, a closer or else with no block, a closer for another kind of block, a block inside another block, or any other `{% %}` tag, throws `Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException` (an `InvalidArgumentException` with the field key and the problem codes `unbalanced_opener`, `unbalanced_closer`, `mismatched_closer`, `nested_block` and `unknown_block_tag`) and the content is never rendered. The editor preview turns it into a validation error on `slots.{index}.data.{field}` (`subject` or `preview_text` for those), with a message in plain English such as "A block tag such as {% if %} is never closed" or "Block tags cannot be nested inside each other". The rich text value is checked as written and again after sanitizing. `BlockMergeTags::validate($text)` returns the codes for your own forms.
+  - **Conditionals fail closed.** The interpolator reads `{% if key %}`, `{% else %}` and `{% endif %}` with a stack, not a pattern, so balanced nesting evaluates correctly even though authoring rejects it. Anything malformed hides content instead of showing it. An `{% if %}` that is never closed hides everything from its tag to the end of the text, a block with two `{% else %}` tags is hidden, a stray `{% else %}` or `{% endif %}` is dropped, and a condition that is not a plain context key (`{% if a == b %}`) is false. Tags are matched without regard to case.
+  - **Document size cap.** The slots of one email may add up to `mail-builder.max_document_bytes` (default 1500000 bytes) of HTML. `EmailSlotCompiler::compileDocument` throws `Odden\MailBuilder\Exceptions\DocumentTooLargeException`, an `InvalidArgumentException`, as soon as the slots pass it and before CSS is inlined, so a pile of near-cap fields cannot exhaust memory. The editor preview turns it into a validation error on `slots`.
+  - **Size cap.** A field over `mail-builder.raw_html_max_bytes` (default 100000 bytes) is refused with `Odden\MailBuilder\Exceptions\RawHtmlTooLargeException`, an `InvalidArgumentException`, before any parsing. The editor preview turns it into a validation error on the slot. Build a large email from slots instead of pasting it into one field.
+  - **Normalization.** The sanitizer writes canonical HTML: attribute values are quoted, `=`, `+` and `@` in text and attributes are written as numeric entities, and `<tbody>` is added to tables as browsers do.
+- **Plain text.** The plain-text fallback prints a link only when it passes the same URL rules, and prints just the link text otherwise.
+- **Exports.** `TemplatePackageExporter` checks URLs with the URL rules, theme colors with the color rules, and body text with `RawHtmlSanitizer`, and escapes the subject, font family and slot type it writes into MJML. The ZIP's `index.html` is scrubbed.
+- **Inline images.** `CidImageEmbedder` never attaches an SVG or any `data:` image outside the raster types above. It blanks the `src` instead.
+- **Preview.** The editor preview does not fetch `feed_url` feeds, so it never makes a request from the server for content a browser sent. It shows the slot's configured static items.
+
+What the raw sanitizer drops from pasted marketing HTML, so you know before you paste a template from another tool:
+
+- `<style>` blocks and `<link>` web fonts. Inline the CSS first, or use the theme's font settings.
+- MSO conditional comments and VML (`<!--[if mso]>`, `<v:roundrect>`, `<o:p>`), which Outlook layouts rely on.
+- `id` and `name` attributes, and with them in-page anchors.
+- `figure` and `figcaption`, which are unwrapped, along with `section`, `article`, `header`, `footer`, `nav` and other sectioning elements.
+- Forms, inputs, buttons, SVG and iframes.
+- Block merge tags in the `html` slot, with the content they wrap.
+- Nested or unbalanced block merge tags in any other text field, which are rejected instead of rendered. Use one block at a time and the slot's visibility rules to target an audience.
+- Any one field over the size cap, and a whole email over the document cap.
+
+A large pasted template is better built from slots, which carry their own Outlook-safe markup and are not limited by the cap. Use `MailBuilder::importHtml()` to turn HTML into slots.
+
+The supported `symfony/html-sanitizer` range is `^7.2 || ^8.0`. On PHP 8.3 the sanitizer uses the Masterminds HTML5 parser instead of PHP 8.4's native one. The test suite runs on one PHP version, so the Masterminds path is untested here.
+
+What stays with the host app:
+
+- **Trusted HTML.** An HTML string given to `TemplateMailable` is a whole document you wrote, so it is not run through `RawHtmlSanitizer`. Only its URLs are scrubbed after interpolation. Do not pass tenant-authored HTML that way. Import it with `MailBuilder::importHtml()`, which turns it into slots that are sanitized.
+- **Preview iframe.** When a host app shows the compiled HTML in an iframe, use `sandbox` without `allow-scripts`. `allow-same-origin` on its own does not let scripts run. Never combine `allow-scripts` with `allow-same-origin`, because the framed page could then remove its own sandbox.
+- **Your own interpolation.** If you fill merge tags yourself instead of through `TemplateMailable`, call `HtmlUrlScrubber::scrub()` on the result. Handle the exception it can throw by not sending the email.
+- **Click tracking.** If you rewrite links to a redirect endpoint, validate the target at the endpoint. The endpoint must accept only `http` and `https` (or your own list) and must not redirect to a URL that failed those rules.
+
+## Upgrading from 2.x
+
+Version 3.0.0 changes what the compiler keeps from raw HTML and rich text, tightens merge tag rules, and adds a required `symfony/html-sanitizer` dependency. Read the upgrade checklist in [CHANGELOG.md](CHANGELOG.md#300---2026-11-04) before you update.
 
 ## Testing
 

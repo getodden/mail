@@ -77,4 +77,76 @@ class TemplatePackageExporterTest extends TestCase
         $zip->close();
         @unlink($tempFile);
     }
+
+    public function test_mjml_urls_use_the_safe_url_rules(): void
+    {
+        $mjml = MailBuilder::exporter()->exportMjml([
+            ['type' => 'hero', 'data' => ['title' => 'T', 'button_url' => 'javascript:alert(1)']],
+            ['type' => 'button', 'data' => ['text' => 'Go', 'url' => ' JaVaScRiPt:alert(2)']],
+            ['type' => 'button', 'data' => ['text' => 'Ok', 'url' => 'https://focal.test/a?b=1&c=2']],
+            ['type' => 'button', 'data' => ['text' => 'Tag', 'url' => '{{ unsubscribe_url }}']],
+        ]);
+
+        $this->assertStringNotContainsString('javascript:', strtolower($mjml));
+        $this->assertSame(2, substr_count($mjml, 'href="#"'));
+        $this->assertStringContainsString('href="https://focal.test/a?b=1&amp;c=2"', $mjml);
+        $this->assertStringContainsString('href="{{ unsubscribe_url }}"', $mjml);
+    }
+
+    public function test_mjml_theme_colours_must_be_colours(): void
+    {
+        $mjml = MailBuilder::exporter()->exportMjml(
+            [['type' => 'button', 'data' => ['text' => 'Go', 'url' => 'https://focal.test']]],
+            ['primary_color' => '#ff0000" onload="alert(1)', 'background_color' => 'red;background:url(https://evil.test/x)', 'content_background_color' => '#ABCDEF'],
+        );
+
+        $this->assertStringNotContainsString('onload', $mjml);
+        $this->assertStringNotContainsString('evil.test', $mjml);
+        $this->assertStringContainsString('background-color="#2563EB"', $mjml);
+        $this->assertStringContainsString('background-color="#F8FAFC"', $mjml);
+        $this->assertStringContainsString('background-color="#ABCDEF"', $mjml);
+    }
+
+    public function test_mjml_escapes_the_font_family_subject_and_slot_type(): void
+    {
+        $mjml = MailBuilder::exporter()->exportMjml(
+            [['type' => 'x --><script>alert(1)</script><!--', 'data' => []]],
+            ['font_family' => 'Arial" onload="alert(1)'],
+            'Hi</mj-title><mj-raw><script>alert(1)</script>',
+        );
+
+        $this->assertStringNotContainsString('<script>', $mjml);
+        $this->assertStringNotContainsString('" onload="', $mjml);
+        $this->assertStringContainsString('<mj-title>Hi&lt;/mj-title&gt;', $mjml);
+        $this->assertStringContainsString('<!-- Slot: x-scriptalert1script- -->', $mjml);
+    }
+
+    public function test_mjml_body_text_goes_through_the_html_sanitizer(): void
+    {
+        $mjml = MailBuilder::exporter()->exportMjml([
+            ['type' => 'body_text', 'data' => ['content' => '<p x\'> y=\'<a href=javascript:alert(1) \'>click</a><script>alert(1)</script><img src=x onerror=alert(1)> Hi {{ contact.first_name }}']],
+            ['type' => 'body_text', 'data' => ['content' => ['<script>alert(2)</script>']]],
+        ]);
+
+        $this->assertStringNotContainsString('javascript:', $mjml);
+        $this->assertStringNotContainsString('<script', $mjml);
+        $this->assertStringNotContainsString('onerror', $mjml);
+        $this->assertStringContainsString('click</a>', $mjml);
+        $this->assertStringContainsString('Hi {{ contact.first_name }}', $mjml);
+    }
+
+    public function test_the_package_html_is_scrubbed_of_script_urls(): void
+    {
+        $zipBytes = (new TemplatePackageExporter)->createZipPackage('Launch', '<a href="javascript:alert(1)">x</a><a href="https://focal.test">y</a>', 'text');
+
+        $tempFile = (string) tempnam(sys_get_temp_dir(), 'test_zip_');
+        file_put_contents($tempFile, $zipBytes);
+        $zip = new ZipArchive;
+        $zip->open($tempFile);
+
+        $this->assertSame('<a href="#">x</a><a href="https://focal.test">y</a>', $zip->getFromName('index.html'));
+
+        $zip->close();
+        @unlink($tempFile);
+    }
 }

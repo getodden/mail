@@ -37,6 +37,8 @@ final class SlotSchemaRegistry
             SlotType::FourColumn,
             SlotType::AsymmetricColumns,
             SlotType::Features,
+            SlotType::Event,
+            SlotType::Gallery,
             SlotType::Testimonial,
             SlotType::StatBox,
             SlotType::SocialLinks,
@@ -77,6 +79,8 @@ final class SlotSchemaRegistry
             SlotType::FourColumn => self::fourColumn(),
             SlotType::AsymmetricColumns => self::asymmetricColumns(),
             SlotType::Features => self::features(),
+            SlotType::Event => self::event(),
+            SlotType::Gallery => self::gallery(),
             SlotType::Testimonial => self::testimonial(),
             SlotType::StatBox => self::statBox(),
             SlotType::SocialLinks => self::socialLinks(),
@@ -97,6 +101,17 @@ final class SlotSchemaRegistry
             SlotType::Html => self::html(),
             SlotType::Footer => self::footer(),
         };
+    }
+
+    public static function forKey(string $key): ?SlotSchema
+    {
+        $builtIn = SlotType::tryFrom($key);
+
+        if ($builtIn !== null) {
+            return self::has($builtIn) ? self::for($builtIn) : null;
+        }
+
+        return app(SlotRegistry::class)->get($key)?->schema();
     }
 
     /**
@@ -122,10 +137,16 @@ final class SlotSchemaRegistry
             $labels[$type->value] = $type->label();
         }
 
+        $custom = app(SlotRegistry::class)->all();
+
+        foreach ($custom as $type) {
+            $labels[$type->key()] = $type->label();
+        }
+
         return [
             'version' => self::VERSION,
             'groups' => array_map(fn (SlotGroup $group): array => ['key' => $group->value, 'label' => $group->label()], SlotGroup::cases()),
-            'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), self::all()),
+            'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), [...self::all(), ...array_map(fn (CustomSlotType $type): SlotSchema => $type->schema(), $custom)]),
             'labels' => $labels,
         ];
     }
@@ -241,6 +262,37 @@ final class SlotSchemaRegistry
         ]);
     }
 
+    private static function event(): SlotSchema
+    {
+        return new SlotSchema(SlotType::Event, 'clock', [
+            new SlotField('title', FieldType::Text, 'Event Title', required: true, fullWidth: true),
+            new SlotField('date', FieldType::Text, 'Date', required: true, placeholder: 'e.g. Saturday, 14 June'),
+            new SlotField('time', FieldType::Text, 'Time', placeholder: 'e.g. 6:00 PM - 9:00 PM'),
+            new SlotField('location', FieldType::Text, 'Location', placeholder: 'e.g. The Tasting Room, 12 Main St', fullWidth: true),
+            new SlotField('description', FieldType::Textarea, 'Description', rows: 3, fullWidth: true),
+            new SlotField('button_text', FieldType::Text, 'Button Label', placeholder: 'e.g. Reserve Your Spot'),
+            new SlotField('button_url', FieldType::Url, 'Button URL', placeholder: 'https://...'),
+            new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
+        ], columns: 2, supportsVisibility: true);
+    }
+
+    private static function gallery(): SlotSchema
+    {
+        return new SlotSchema(SlotType::Gallery, 'photo', [
+            new SlotField('heading', FieldType::Text, 'Gallery Heading', fullWidth: true),
+            new SlotField('columns', FieldType::Select, 'Columns', default: 3, options: [
+                ['value' => 2, 'label' => '2 columns'],
+                ['value' => 3, 'label' => '3 columns'],
+            ]),
+            new SlotField('images', FieldType::Items, 'Images', fullWidth: true, defaultItems: 3, itemColumns: 2, items: [
+                new SlotField('image_url', FieldType::Image, 'Image URL', required: true, placeholder: 'https://...'),
+                new SlotField('alt', FieldType::Text, 'Alt Text'),
+                new SlotField('caption', FieldType::Text, 'Caption'),
+                new SlotField('link_url', FieldType::Url, 'Link URL', placeholder: 'https://...'),
+            ]),
+        ], supportsVisibility: true);
+    }
+
     private static function divider(): SlotSchema
     {
         return new SlotSchema(SlotType::Divider, 'minus', [
@@ -267,7 +319,8 @@ final class SlotSchemaRegistry
             new SlotField('company_name', FieldType::Text, 'Legal Entity / Company Name', required: true, default: fn (): string => self::companyName()),
             new SlotField('address', FieldType::Text, 'Physical Mailing Address', required: true, placeholder: '123 Example St, Springfield'),
             new SlotField('notice', FieldType::Text, 'Permission Notice', placeholder: 'You are receiving this because you signed up on example.com'),
-            new SlotField('unsubscribe_url', FieldType::Text, 'Unsubscribe URL / Merge Tag', required: true, default: '{{unsubscribe_url}}'),
+            new SlotField('warning', FieldType::Textarea, 'Required Notice / Warning', rows: 2, placeholder: 'e.g. Must be 21 or older to purchase alcohol.', fullWidth: true),
+            new SlotField('unsubscribe_url', FieldType::Url, 'Unsubscribe URL / Merge Tag', required: true, default: '{{unsubscribe_url}}'),
             new SlotField('preferences_url', FieldType::Url, 'Preferences URL', advanced: true),
             new SlotField('copyright_year', FieldType::Number, 'Copyright Year', advanced: true),
         ], columns: 2);
@@ -394,7 +447,7 @@ final class SlotSchemaRegistry
     private static function html(): SlotSchema
     {
         return new SlotSchema(SlotType::Html, 'code-bracket', [
-            new SlotField('html', FieldType::Textarea, 'Raw HTML Code', required: true, rows: 8, fullWidth: true),
+            new SlotField('html', FieldType::Textarea, 'Raw HTML Code', required: true, rows: 8, fullWidth: true, rawHtml: true),
             new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
         ]);
     }
@@ -574,7 +627,7 @@ final class SlotSchemaRegistry
                 ['value' => '10', 'label' => '0 to 10 Scale (Industry Standard NPS)'],
                 ['value' => '5', 'label' => '1 to 5 Stars / CSAT Scale'],
             ]),
-            new SlotField('base_url', FieldType::Text, 'Destination Rating Endpoint / Webhook', required: true, default: '/feedback/nps/{{nps_token}}', help: 'Each button appends /{score} to this URL.'),
+            new SlotField('base_url', FieldType::Url, 'Destination Rating Endpoint / Webhook', required: true, default: '/feedback/nps/{{nps_token}}', help: 'Each button appends /{score} to this URL.'),
             new SlotField('low_label', FieldType::Text, 'Lowest Score Meaning', required: true, default: 'Not at all likely'),
             new SlotField('high_label', FieldType::Text, 'Highest Score Meaning', required: true, default: 'Extremely likely'),
         ], columns: 2, supportsVisibility: true);

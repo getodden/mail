@@ -1,6 +1,7 @@
 @php
     $videoUrl = $data['video_url'] ?? 'https://www.youtube.com';
     $thumbnailUrl = $data['thumbnail_url'] ?? 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80';
+    $cssThumbnailUrl = preg_replace_callback('/[\'"()\\\\\s]/', fn (array $character): string => rawurlencode($character[0]), (string) $thumbnailUrl);
     $title = $data['title'] ?? 'Watch Product Tour & Feature Walkthrough';
     $subtitle = $data['subtitle'] ?? '3 min overview of the new platform capabilities';
     $badge = $data['badge'] ?? 'VIDEO DEMO';
@@ -12,7 +13,7 @@
         <td style="padding: 24px 32px;" class="mobile-padding">
             <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #0f172a; border-radius: {{ $borderRadius }}; overflow: hidden; border: 1px solid #1e293b;">
                 <tr>
-                    <td align="center" style="position: relative; padding: 48px 24px; background-image: url('{{ $thumbnailUrl }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+                    <td align="center" style="position: relative; padding: 48px 24px; background-image: url('{{ $cssThumbnailUrl }}'); background-size: cover; background-position: center; background-repeat: no-repeat;">
                         <!-- Dark overlay backdrop for readable text and play icon contrast -->
                         <div style="background-color: rgba(15, 23, 42, 0.7); padding: 32px 16px; border-radius: 8px;">
                             @if(!empty($badge))

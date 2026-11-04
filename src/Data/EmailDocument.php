@@ -10,6 +10,7 @@ use JsonSerializable;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Compilers\PlainTextExtractor;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\CustomSlotType;
 
 /**
  * @implements Arrayable<string, mixed>
@@ -82,7 +83,7 @@ class EmailDocument implements Arrayable, Jsonable, JsonSerializable
      *
      * @param  array<string, mixed>  $data
      */
-    public function append(SlotType $type, array $data = []): self
+    public function append(SlotType|CustomSlotType $type, array $data = []): self
     {
         $this->slots[] = new EmailSlot($type, $data);
 

@@ -7,6 +7,9 @@ namespace Odden\MailBuilder\Compilers;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\ProvidesPlainText;
+use Odden\MailBuilder\Support\SafeUrl;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 class PlainTextExtractor
 {
@@ -38,6 +41,14 @@ class PlainTextExtractor
      */
     public function extractFromSlot(EmailSlot $slot): string
     {
+        $slot = SlotDataSanitizer::slot($slot);
+
+        if (! $slot->type instanceof SlotType) {
+            return $slot->type instanceof ProvidesPlainText
+                ? $slot->type->plainText($slot->data)
+                : $this->extractFromHtml(app(EmailSlotCompiler::class)->compileSlot($slot));
+        }
+
         return match ($slot->type) {
             SlotType::Header => $this->extractHeader($slot),
             SlotType::Hero => $this->extractHero($slot),
@@ -68,6 +79,8 @@ class PlainTextExtractor
             SlotType::AppBadges => $this->extractAppBadges($slot),
             SlotType::DataTable => $this->extractDataTable($slot),
             SlotType::LabeledDivider => $this->extractLabeledDivider($slot),
+            SlotType::Event => $this->extractEvent($slot),
+            SlotType::Gallery => $this->extractGallery($slot),
         };
     }
 
@@ -90,6 +103,11 @@ class PlainTextExtractor
         $text = (string) preg_replace_callback('/<a[^>]+href=([\'"])(.*?)\1[^>]*>(.*?)<\/a>/is', function (array $matches): string {
             $url = $matches[2];
             $label = trim(strip_tags($matches[3]));
+            $decoded = SafeUrl::decodeEntities($url);
+
+            if (SafeUrl::for($decoded) !== trim($decoded)) {
+                return $label;
+            }
 
             return $label !== '' && $label !== $url ? "{$label} ({$url})" : $url;
         }, $html);
@@ -245,11 +263,69 @@ class PlainTextExtractor
         $address = (string) $slot->get('address', '');
         $unsubscribeUrl = (string) $slot->get('unsubscribe_url', '{{unsubscribe_url}}');
 
+        $warning = (string) $slot->get('warning', '');
+
         $lines = ['(C) '.date('Y')." {$company}."];
+        if ($warning !== '') {
+            $lines[] = $warning;
+        }
         if ($address !== '') {
             $lines[] = $address;
         }
         $lines[] = "Unsubscribe: {$unsubscribeUrl}";
+
+        return implode("\n", $lines);
+    }
+
+    protected function extractEvent(EmailSlot $slot): string
+    {
+        $lines = [(string) $slot->get('title', '')];
+
+        foreach (['date' => 'Date', 'time' => 'Time', 'location' => 'Location'] as $key => $label) {
+            $value = (string) $slot->get($key, '');
+            if ($value !== '') {
+                $lines[] = "{$label}: {$value}";
+            }
+        }
+
+        $description = (string) $slot->get('description', '');
+        if ($description !== '') {
+            $lines[] = $description;
+        }
+
+        $buttonText = (string) $slot->get('button_text', '');
+        $buttonUrl = (string) $slot->get('button_url', '');
+        if ($buttonText !== '' && $buttonUrl !== '') {
+            $lines[] = "{$buttonText}: {$buttonUrl}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    protected function extractGallery(EmailSlot $slot): string
+    {
+        $heading = (string) $slot->get('heading', '');
+        $rawImages = $slot->get('images', []);
+        $images = array_slice(
+            array_values(array_filter(
+                is_array($rawImages) ? $rawImages : [],
+                fn ($image): bool => is_array($image) && ! empty($image['image_url']),
+            )),
+            0,
+            12,
+        );
+
+        $lines = [];
+        if ($heading !== '') {
+            $lines[] = "=== {$heading} ===";
+        }
+
+        foreach ($images as $image) {
+            $label = (string) (($image['caption'] ?? '') !== '' ? $image['caption'] : ($image['alt'] ?? ''));
+            $link = (string) ($image['link_url'] ?? '');
+            $line = '* '.($label !== '' ? $label : 'Image');
+            $lines[] = $link !== '' ? "{$line} ({$link})" : $line;
+        }
 
         return implode("\n", $lines);
     }

@@ -7,36 +7,25 @@ namespace Odden\MailBuilder\MergeTags;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class MergeTagInterpolator
 {
     /**
-     * Interpolate merge tags and conditional blocks within a given string using context.
-     *
-     * With $escape, a value that comes from the context is HTML-escaped where it is put into the text, so a value that is
-     * not markup (a name, a note, an order reference a customer typed) cannot add markup or a link to an email. A tag
-     * written with the `raw` filter ({{ order_table | raw }}) is the template author saying the value is markup they
-     * trust; fallback text from a `default` filter is the author's own and is not escaped. Without $escape (plain text,
-     * subjects, and callers that escape their own values) nothing is escaped, as before.
-     *
      * @param  array<string, mixed>  $context
      */
-    public function interpolate(string $content, array $context = [], bool $escape = false): string
+    public function interpolate(string $content, array $context = [], bool $escape = false, bool $allowRaw = false): string
     {
-        // 1. Process conditional logic blocks: {% if condition %}...{% else %}...{% endif %}
         $content = $this->interpolateConditionals($content, $context);
 
-        // 2. Process variable tags with pipe filters: {{ tag | filter1 | filter2:arg }}
         return (string) preg_replace_callback(
             '/\{\{\s*([a-zA-Z0-9_\.]+)(?:\s*\|\s*([^}]+))?\s*\}\}/',
-            function (array $matches) use ($context, $escape): string {
+            function (array $matches) use ($context, $escape, $allowRaw): string {
                 $tag = trim($matches[1]);
                 $pipeFilters = isset($matches[2]) ? trim($matches[2]) : null;
 
                 $raw = Arr::get($context, $tag);
                 $value = ($raw !== null && is_scalar($raw)) ? (string) $raw : null;
-
-                // Whether the text being built is the context's (to be escaped) or the template author's own.
                 $fromContext = $value !== null;
                 $trusted = false;
 
@@ -48,7 +37,7 @@ class MergeTagInterpolator
                         $args = $filter['args'];
 
                         if ($name === 'raw') {
-                            $trusted = true;
+                            $trusted = $allowRaw;
                         } elseif ($name === 'default') {
                             $defaultFallback = $args[0] ?? '';
                             if ($value === null || $value === '') {
@@ -67,7 +56,6 @@ class MergeTagInterpolator
                         : $value;
                 }
 
-                // If no value provided, leave tag intact
                 return $matches[0];
             },
             $content
@@ -77,22 +65,87 @@ class MergeTagInterpolator
     /**
      * Evaluate conditional blocks within the template content.
      *
+     * An unclosed if hides everything from its tag to the end of the content, a block with a second else is hidden,
+     * stray else and endif tags are dropped, and a condition that is not a plain context key is false.
+     *
      * @param  array<string, mixed>  $context
      */
     protected function interpolateConditionals(string $content, array $context): string
     {
-        $pattern = '/\{%\s*if\s+([a-zA-Z0-9_\.]+)\s*%\}(.*?)(?:\{%\s*else\s*%\}(.*?))?\{%\s*endif\s*%\}/s';
+        if (! str_contains($content, '{%')) {
+            return $content;
+        }
 
-        return (string) preg_replace_callback($pattern, function (array $matches) use ($context): string {
-            $key = trim($matches[1]);
-            $ifBranch = $matches[2];
-            $elseBranch = $matches[3] ?? '';
+        $found = preg_match_all('/\{%\s*(if|else|endif)\b([^%<>{}]*+)%\}/i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
 
-            $val = Arr::get($context, $key);
-            $isTruthy = ! empty($val);
+        if ($found === false) {
+            throw new RuntimeException('The conditionals could not be parsed: '.preg_last_error_msg().'.');
+        }
 
-            return $isTruthy ? $ifBranch : $elseBranch;
-        }, $content);
+        $output = '';
+        $offset = 0;
+        $active = true;
+        $frames = [];
+
+        foreach ($matches as $match) {
+            [$tag, $start] = $match[0];
+            $word = strtolower($match[1][0]);
+            $key = trim($match[2][0]);
+
+            if ($word !== 'if' && $key !== '') {
+                continue;
+            }
+
+            if ($active) {
+                $output .= substr($content, $offset, $start - $offset);
+            }
+
+            $offset = $start + strlen($tag);
+
+            if ($word === 'if') {
+                $holds = preg_match('/^[a-zA-Z0-9_\.]+$/', $key) === 1 && ! empty(Arr::get($context, $key));
+                $frames[] = ['outer' => $active, 'holds' => $holds, 'else' => false, 'broken' => false, 'length' => strlen($output)];
+                $active = $active && $holds;
+
+                continue;
+            }
+
+            if ($frames === []) {
+                continue;
+            }
+
+            $top = count($frames) - 1;
+
+            if ($word === 'else') {
+                if ($frames[$top]['else']) {
+                    $frames[$top]['broken'] = true;
+                    $active = false;
+                } elseif (! $frames[$top]['broken']) {
+                    $frames[$top]['else'] = true;
+                    $active = $frames[$top]['outer'] && ! $frames[$top]['holds'];
+                }
+
+                continue;
+            }
+
+            $frame = array_pop($frames);
+
+            if ($frame['broken']) {
+                $output = substr($output, 0, $frame['length']);
+            }
+
+            $active = $frame['outer'];
+        }
+
+        if ($active) {
+            $output .= substr($content, $offset);
+        }
+
+        if ($frames !== []) {
+            $output = substr($output, 0, $frames[0]['length']);
+        }
+
+        return $output;
     }
 
     /**

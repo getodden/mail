@@ -23,6 +23,12 @@ return [
         'border_radius' => '8px',
     ],
 
+    'raw_html_max_bytes' => 100000,
+
+    'max_document_bytes' => 1500000,
+
+    'url_schemes' => ['http', 'https', 'mailto', 'tel', 'sms', 'webcal', 'webcals', 'whatsapp', 'skype', 'geo', 'itms', 'itms-apps'],
+
     /*
     |--------------------------------------------------------------------------
     | Default Organization & Unsubscribe Information

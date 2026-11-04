@@ -10,6 +10,12 @@ use Illuminate\Validation\ValidationException;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\DocumentTooLargeException;
+use Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException;
+use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
+use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Support\BlockMergeTags;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 /**
  * Renders the editor's preview: validates a document the browser sent, and compiles it with a marker on each slot.
@@ -32,7 +38,7 @@ final class PreviewRenderer
         $data = Validator::make($payload, [
             'slots' => ['present', 'array', 'max:'.(int) config('mail-builder.editor.max_slots', 200)],
             'slots.*' => ['array'],
-            'slots.*.type' => ['required', 'string', Rule::in(array_map(fn (SlotType $type): string => $type->value, SlotType::cases()))],
+            'slots.*.type' => ['required', 'string', Rule::in([...array_map(fn (SlotType $type): string => $type->value, SlotType::cases()), ...app(SlotRegistry::class)->keys()])],
             'slots.*.data' => ['nullable', 'array'],
             'slots.*.visibility' => ['nullable', 'array'],
             'subject' => ['nullable', 'string', 'max:255'],
@@ -40,6 +46,52 @@ final class PreviewRenderer
             'theme' => ['nullable', 'array'],
         ])->validate();
 
-        return $this->compiler->compileDocument(EmailDocument::fromArray($data), ['editor_markers' => true]);
+        $document = EmailDocument::fromArray($data);
+
+        try {
+            return $this->compiler->compileDocument($document, ['editor_markers' => true, 'fetch_feeds' => false]);
+        } catch (RawHtmlTooLargeException $exception) {
+            throw ValidationException::withMessages([$this->offendingSlot($document) => [$exception->getMessage()]]);
+        } catch (DocumentTooLargeException $exception) {
+            throw ValidationException::withMessages(['slots' => [$exception->getMessage()]]);
+        } catch (InvalidMergeTagStructureException $exception) {
+            throw ValidationException::withMessages([$this->offendingField($document, $exception) => $exception->descriptions()]);
+        }
+    }
+
+    private function offendingSlot(EmailDocument $document): string
+    {
+        foreach ($document->slots as $index => $slot) {
+            try {
+                SlotDataSanitizer::slot($slot);
+            } catch (RawHtmlTooLargeException) {
+                return "slots.{$index}.data";
+            } catch (InvalidMergeTagStructureException) {
+                continue;
+            }
+        }
+
+        return 'slots';
+    }
+
+    private function offendingField(EmailDocument $document, InvalidMergeTagStructureException $exception): string
+    {
+        foreach (['subject' => $document->subject, 'preview_text' => $document->previewText] as $field => $text) {
+            if ($exception->field === $field && $text !== null && BlockMergeTags::validate($text) !== []) {
+                return $field;
+            }
+        }
+
+        foreach ($document->slots as $index => $slot) {
+            try {
+                SlotDataSanitizer::slot($slot);
+            } catch (InvalidMergeTagStructureException $found) {
+                return "slots.{$index}.data.{$found->field}";
+            } catch (RawHtmlTooLargeException) {
+                continue;
+            }
+        }
+
+        return 'slots';
     }
 }

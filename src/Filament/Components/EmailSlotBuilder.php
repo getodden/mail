@@ -16,6 +16,8 @@ use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Compilers\PlainTextExtractor;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Schema\CustomSlotType;
+use Odden\MailBuilder\Schema\SlotRegistry;
 
 class EmailSlotBuilder
 {
@@ -58,7 +60,13 @@ class EmailSlotBuilder
                 self::getAppBadgesBlock(),
                 self::getDataTableBlock(),
                 self::getLabeledDividerBlock(),
+                self::getEventBlock(),
+                self::getGalleryBlock(),
                 self::getHtmlBlock(),
+                ...array_map(
+                    fn (CustomSlotType $type): Block => SchemaBlockFactory::fromSchema($type->schema()),
+                    app(SlotRegistry::class)->all(),
+                ),
             ]);
     }
 
@@ -190,6 +198,16 @@ class EmailSlotBuilder
         return SchemaBlockFactory::make(SlotType::RatingBar);
     }
 
+    public static function getEventBlock(): Block
+    {
+        return SchemaBlockFactory::make(SlotType::Event);
+    }
+
+    public static function getGalleryBlock(): Block
+    {
+        return SchemaBlockFactory::make(SlotType::Gallery);
+    }
+
     /**
      * Countdown Timer Urgency Block Definition.
      */
@@ -295,7 +313,7 @@ class EmailSlotBuilder
 
                 $slotsData = array_map(function ($slot): array {
                     return [
-                        'type' => $slot->type->value,
+                        'type' => $slot->key(),
                         'data' => $slot->data,
                     ];
                 }, $document->slots);

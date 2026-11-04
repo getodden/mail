@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Exporters;
 
+use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\RawHtmlSanitizer;
+use Odden\MailBuilder\Support\SafeColor;
+use Odden\MailBuilder\Support\SafeUrl;
 use ZipArchive;
 
 class TemplatePackageExporter
@@ -16,15 +20,17 @@ class TemplatePackageExporter
      */
     public function exportMjml(array $slots, array $theme = [], string $subject = 'Email'): string
     {
+        $theme = SafeColor::theme($theme);
         $primaryColor = $theme['primary_color'] ?? '#2563EB';
         $bgColor = $theme['background_color'] ?? '#F8FAFC';
         $contentBg = $theme['content_background_color'] ?? '#FFFFFF';
-        $fontFamily = $theme['font_family'] ?? '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif';
+        $fontFamily = htmlspecialchars(is_string($theme['font_family'] ?? null) ? $theme['font_family'] : '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif');
+        $subjectLine = htmlspecialchars($subject);
 
         $sections = [];
 
         foreach ($slots as $slot) {
-            $type = (string) ($slot['type'] ?? 'body_text');
+            $type = (string) preg_replace(['/[^a-z0-9_-]/i', '/-{2,}/'], ['', '-'], (string) ($slot['type'] ?? 'body_text'));
             $data = is_array($slot['data'] ?? null) ? $slot['data'] : [];
 
             switch ($type) {
@@ -43,7 +49,7 @@ MJML;
                     $title = htmlspecialchars((string) ($data['title'] ?? 'Headline'));
                     $subtitle = htmlspecialchars((string) ($data['subtitle'] ?? ''));
                     $btnText = htmlspecialchars((string) ($data['button_text'] ?? 'Get Started'));
-                    $btnUrl = htmlspecialchars((string) ($data['button_url'] ?? '#'));
+                    $btnUrl = htmlspecialchars(SafeUrl::for((string) ($data['button_url'] ?? '#')));
                     $sections[] = <<<MJML
     <mj-section background-color="{$contentBg}" padding="32px 24px" text-align="center">
       <mj-column>
@@ -56,7 +62,7 @@ MJML;
                     break;
 
                 case 'body_text':
-                    $content = (string) ($data['content'] ?? '');
+                    $content = RawHtmlSanitizer::sanitize(is_scalar($data['content'] ?? null) ? (string) $data['content'] : '', RawHtmlSanitizer::PROFILE_RICH);
                     $sections[] = <<<MJML
     <mj-section background-color="{$contentBg}" padding="16px 24px">
       <mj-column>
@@ -68,7 +74,7 @@ MJML;
 
                 case 'button':
                     $btnText = htmlspecialchars((string) ($data['text'] ?? 'Click Here'));
-                    $btnUrl = htmlspecialchars((string) ($data['url'] ?? '#'));
+                    $btnUrl = htmlspecialchars(SafeUrl::for((string) ($data['url'] ?? '#')));
                     $sections[] = <<<MJML
     <mj-section background-color="{$contentBg}" padding="16px 24px">
       <mj-column>
@@ -95,7 +101,7 @@ MJML;
         return <<<MJML
 <mjml>
   <mj-head>
-    <mj-title>{$subject}</mj-title>
+    <mj-title>{$subjectLine}</mj-title>
     <mj-attributes>
       <mj-all font-family="{$fontFamily}" />
       <mj-text padding="0" />
@@ -123,7 +129,7 @@ MJML;
         $zip = new ZipArchive;
         $zip->open($tempFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
-        $zip->addFromString('index.html', $html);
+        $zip->addFromString('index.html', HtmlUrlScrubber::scrub($html));
         $zip->addFromString('plain_text.txt', $plainText);
         $zip->addFromString('metadata.json', (string) json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 

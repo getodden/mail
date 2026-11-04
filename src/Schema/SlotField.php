@@ -34,6 +34,7 @@ final class SlotField
         public readonly bool $advanced = false,
         public readonly int $defaultItems = 0,
         public readonly int $itemColumns = 0,
+        public readonly bool $rawHtml = false,
     ) {}
 
     /**

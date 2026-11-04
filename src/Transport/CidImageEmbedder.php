@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Transport;
 
+use Odden\MailBuilder\Support\SafeUrl;
+
 class CidImageEmbedder
 {
     private const MAX_LOCAL_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -34,6 +36,12 @@ class CidImageEmbedder
             // If already a cid:, skip
             if (str_starts_with($src, 'cid:')) {
                 return $matches[0];
+            }
+
+            $decodedSrc = ltrim(SafeUrl::decodeEntities($src));
+
+            if (stripos($decodedSrc, 'data:') === 0 && SafeUrl::for($decodedSrc, true) === '') {
+                return "<img{$before}src=\"\"{$after}>";
             }
 
             // Case 1: Base64 data URI (e.g. data:image/png;base64,iVBORw0KGgo...)

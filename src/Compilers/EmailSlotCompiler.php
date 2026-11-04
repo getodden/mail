@@ -8,8 +8,15 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\DocumentTooLargeException;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\Support\BlockMergeTags;
+use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\MergeTagGuard;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
+use Odden\MailBuilder\Support\PackageConfig;
+use Odden\MailBuilder\Support\SafeColor;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 use Odden\MailBuilder\Themes\FontManager;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
@@ -39,7 +46,7 @@ class EmailSlotCompiler
      */
     public function compileDocument(EmailDocument $document, array $options = []): string
     {
-        $theme = array_merge($this->defaultConfig, $document->theme, $options['theme'] ?? []);
+        $theme = SafeColor::theme(array_merge($this->defaultConfig, $document->theme, $options['theme'] ?? []));
         /** @var array<string, mixed>|null $context */
         $context = $options['context'] ?? null;
         $inlineCss = (bool) ($options['inline_css'] ?? true);
@@ -47,16 +54,23 @@ class EmailSlotCompiler
 
         $editorMarkers = (bool) ($options['editor_markers'] ?? false);
 
+        BlockMergeTags::assertValid('subject', $document->subject);
+        BlockMergeTags::assertValid('preview_text', $document->previewText);
+
+        $limit = $this->maxDocumentBytes();
         $slotsHtml = '';
         foreach ($document->slots as $index => $slot) {
             if ($context !== null && ! $slot->matchesContext($context)) {
                 continue;
             }
 
-            $compiled = $this->compileSlot($slot, $theme);
+            $compiled = $this->compileSlot($slot, $theme, ['fetch_feeds' => $options['fetch_feeds'] ?? true]);
 
-            // The drag-and-drop editor finds each slot in the preview by this marker. Never set it for a real send.
             $slotsHtml .= $editorMarkers ? '<div data-odden-slot="'.$index.'">'.$compiled.'</div>' : $compiled;
+
+            if (strlen($slotsHtml) > $limit) {
+                throw DocumentTooLargeException::exceeding($limit);
+            }
         }
 
         $previewText = $document->previewText;
@@ -71,16 +85,14 @@ class EmailSlotCompiler
         ])->render();
 
         if ($interpolate && $context !== null && $this->interpolator !== null) {
-            $rawHtml = $this->interpolator->interpolate($rawHtml, $context);
+            $rawHtml = $this->interpolator->interpolate($rawHtml, $context, escape: true);
         }
 
-        // Inject Web Font imports & MSO typography fallbacks if specified
         if (! empty($theme['font_family']) && is_string($theme['font_family']) && str_contains($rawHtml, '</head>')) {
             $typography = FontManager::generateHeadTypography($theme['font_family']);
             $rawHtml = str_replace('</head>', "{$typography}\n</head>", $rawHtml);
         }
 
-        // Inject Gmail Quick Action (Schema.org) if provided
         if (! empty($options['gmail_action']) || ! empty($options['gmail_actions'])) {
             $compiler = new GmailActionCompiler;
             if (! empty($options['gmail_action']) && is_array($options['gmail_action'])) {
@@ -100,16 +112,29 @@ class EmailSlotCompiler
         }
 
         if ($inlineCss && $this->inliner !== null) {
-            $rawHtml = $this->inliner->convert($rawHtml);
+            $rawHtml = $this->inlineCss($this->inliner, $rawHtml);
             $rawHtml = preg_replace('/^<!doctype html>/i', '<!DOCTYPE html>', $rawHtml) ?? $rawHtml;
         }
 
-        // Optimize image tags for Outlook MSO and Retina displays
         if ((bool) ($options['optimize_images'] ?? true)) {
             $rawHtml = EmailImageOptimizer::optimize($rawHtml);
         }
 
-        return $rawHtml;
+        return HtmlUrlScrubber::scrub($rawHtml);
+    }
+
+    protected function maxDocumentBytes(): int
+    {
+        $configured = PackageConfig::get('mail-builder.max_document_bytes', 1500000);
+
+        return is_numeric($configured) ? max(1, (int) $configured) : 1500000;
+    }
+
+    protected function inlineCss(CssToInlineStyles $inliner, string $html): string
+    {
+        [$protected, $mergeTags] = MergeTagGuard::protect($html);
+
+        return MergeTagGuard::restore($inliner->convert($protected), $mergeTags);
     }
 
     /**
@@ -134,10 +159,11 @@ class EmailSlotCompiler
      * Render an individual slot to HTML.
      *
      * @param  array<string, mixed>  $theme
+     * @param  array<string, mixed>  $options
      */
-    public function compileSlot(EmailSlot $slot, array $theme = []): string
+    public function compileSlot(EmailSlot $slot, array $theme = [], array $options = []): string
     {
-        $viewName = $slot->type->viewName();
+        $viewName = $slot->viewName();
 
         if (! $this->view->exists($viewName)) {
             return '';
@@ -146,7 +172,9 @@ class EmailSlotCompiler
         $data = $slot->data;
 
         // If slot has a remote feed URL, attempt runtime hydration
-        if (($slot->type === SlotType::DynamicFeed || $slot->type === SlotType::RssFeed) && ! empty($data['feed_url'])) {
+        $fetchFeeds = (bool) ($options['fetch_feeds'] ?? true);
+
+        if ($fetchFeeds && ($slot->type === SlotType::DynamicFeed || $slot->type === SlotType::RssFeed) && ! empty($data['feed_url'])) {
             $data = $this->hydrateFeedSlot($data);
             $slot = new EmailSlot(
                 type: $slot->type,
@@ -155,10 +183,13 @@ class EmailSlotCompiler
             );
         }
 
+        $slot = SlotDataSanitizer::slot(new EmailSlot(type: $slot->type, data: $data, visibility: $slot->visibility));
+        $data = $slot->data;
+
         return $this->view->make($viewName, [
             'slot' => $slot,
             'data' => $data,
-            'theme' => array_merge($this->defaultConfig, $theme),
+            'theme' => SafeColor::theme(array_merge($this->defaultConfig, $theme)),
         ])->render();
     }
 

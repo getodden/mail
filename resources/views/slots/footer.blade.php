@@ -4,6 +4,7 @@
     $unsubscribeUrl = $data['unsubscribe_url'] ?? '{{unsubscribe_url}}';
     $preferencesUrl = $data['preferences_url'] ?? null;
     $notice = $data['notice'] ?? null;
+    $warning = $data['warning'] ?? null;
     $copyrightYear = $data['copyright_year'] ?? date('Y');
 @endphp
 
@@ -19,6 +20,12 @@
             <div style="font-weight: 600; color: #64748b;">
                 &copy; {{ $copyrightYear }} {{ $companyName }}. All rights reserved.
             </div>
+
+            @if(!empty($warning))
+                <div style="margin-top: 8px; font-size: 11px; line-height: 1.5; color: #94a3b8;">
+                    {!! nl2br(e($warning)) !!}
+                </div>
+            @endif
 
             @if(!empty($address))
                 <div style="margin-top: 4px;">

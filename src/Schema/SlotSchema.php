@@ -20,7 +20,7 @@ final class SlotSchema
      * @param  bool  $supportsVisibility  Whether the slot takes an audience visibility rule.
      */
     public function __construct(
-        public readonly SlotType $type,
+        public readonly SlotType|CustomSlotType $type,
         public readonly string $icon,
         public readonly array $fields,
         public readonly int $columns = 0,
@@ -30,6 +30,11 @@ final class SlotSchema
     public function label(): string
     {
         return $this->type->label();
+    }
+
+    public function key(): string
+    {
+        return $this->type instanceof SlotType ? $this->type->value : $this->type->key();
     }
 
     /**
@@ -68,7 +73,7 @@ final class SlotSchema
     public function toArray(): array
     {
         return [
-            'type' => $this->type->value,
+            'type' => $this->key(),
             'label' => $this->label(),
             'short_label' => $this->type->shortLabel(),
             'description' => $this->type->description(),

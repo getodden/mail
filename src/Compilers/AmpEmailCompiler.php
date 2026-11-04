@@ -7,6 +7,10 @@ namespace Odden\MailBuilder\Compilers;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\RawHtmlSanitizer;
+use Odden\MailBuilder\Support\SafeColor;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 class AmpEmailCompiler
 {
@@ -22,7 +26,7 @@ class AmpEmailCompiler
             ? $documentOrSlots
             : EmailDocument::fromArray(['slots' => $documentOrSlots]);
 
-        $theme = array_merge($document->theme, $options['theme'] ?? []);
+        $theme = SafeColor::theme(array_merge($document->theme, $options['theme'] ?? []));
         $primaryColor = (string) ($theme['primary_color'] ?? '#2563EB');
         $bgColor = (string) ($theme['background_color'] ?? '#F8FAFC');
         $contentBg = (string) ($theme['content_background_color'] ?? '#FFFFFF');
@@ -31,6 +35,8 @@ class AmpEmailCompiler
         $requiresAccordion = false;
 
         foreach ($document->slots as $slot) {
+            $slot = SlotDataSanitizer::slot($slot);
+
             if ($slot->type === SlotType::Accordion) {
                 $requiresAccordion = true;
                 $bodyParts[] = $this->compileAmpAccordion($slot, $primaryColor);
@@ -50,7 +56,7 @@ class AmpEmailCompiler
 
         $bodyContent = implode("\n", $bodyParts);
 
-        return <<<HTML
+        return HtmlUrlScrubber::scrub(<<<HTML
 <!doctype html>
 <html ⚡4email data-css-strict>
 <head>
@@ -72,7 +78,7 @@ class AmpEmailCompiler
   </div>
 </body>
 </html>
-HTML;
+HTML);
     }
 
     protected function compileAmpHero(EmailSlot $slot, string $primaryColor): string
@@ -136,7 +142,7 @@ HTML;
 
     protected function compileAmpGeneralSlot(EmailSlot $slot): string
     {
-        $content = (string) $slot->get('content', '');
+        $content = RawHtmlSanitizer::sanitize((string) $slot->get('content', ''), RawHtmlSanitizer::PROFILE_RICH);
         if ($content !== '') {
             return "<div class=\"amp-card\">{$content}</div>";
         }

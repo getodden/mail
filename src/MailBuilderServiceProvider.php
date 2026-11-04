@@ -16,6 +16,7 @@ use Odden\MailBuilder\Conditions\SlotVisibilityEvaluator;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
 use Odden\MailBuilder\MergeTags\MergeTagRegistry;
 use Odden\MailBuilder\Presets\PresetRegistry;
+use Odden\MailBuilder\Schema\SlotRegistry;
 use Odden\MailBuilder\Tracking\EmailTrackingPipeline;
 
 class MailBuilderServiceProvider extends ServiceProvider
@@ -26,6 +27,8 @@ class MailBuilderServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/mail-builder.php', 'mail-builder');
+
+        $this->app->singleton(SlotRegistry::class);
 
         $this->app->singleton(EmailSlotCompiler::class, function ($app): EmailSlotCompiler {
             return new EmailSlotCompiler($app['view'], $app['config']->get('mail-builder.defaults', []));
