@@ -7,7 +7,9 @@ namespace Odden\MailBuilder\Tests\Unit;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\FieldType;
 use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 use Odden\MailBuilder\Support\SafeColor;
 use Odden\MailBuilder\Support\SafeUrl;
 use Odden\MailBuilder\Tests\Support\LinkSlot;
@@ -162,6 +164,20 @@ class InputHardeningTest extends TestCase
         }
 
         $this->assertSame('', SafeUrl::for('data:image/svg+xml;base64,AAAA', true));
+    }
+
+    public function test_the_footer_unsubscribe_url_is_a_url_field_and_keeps_its_merge_tag_default(): void
+    {
+        $field = collect(SlotSchemaRegistry::for(SlotType::Footer)->fields)->firstWhere('key', 'unsubscribe_url');
+
+        $this->assertSame(FieldType::Url, $field->type);
+        $this->assertSame('{{unsubscribe_url}}', $field->resolveDefault());
+        $this->assertSame('{{unsubscribe_url}}', SafeUrl::for($field->resolveDefault()));
+
+        $html = $this->compile(SlotType::Footer, ['company_name' => 'Acme', 'address' => '1 St', 'unsubscribe_url' => 'javascript:alert(1)']);
+
+        $this->assertStringNotContainsString('javascript:', $html);
+        $this->assertStringContainsString('href="#"', $html);
     }
 
     public function test_an_injected_color_is_dropped_so_the_default_applies(): void
