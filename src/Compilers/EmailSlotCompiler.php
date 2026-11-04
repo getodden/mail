@@ -109,7 +109,7 @@ class EmailSlotCompiler
         }
 
         if ($inlineCss && $this->inliner !== null) {
-            $rawHtml = $this->inlineCss($rawHtml);
+            $rawHtml = $this->inlineCss($this->inliner, $rawHtml);
             $rawHtml = preg_replace('/^<!doctype html>/i', '<!DOCTYPE html>', $rawHtml) ?? $rawHtml;
         }
 
@@ -121,7 +121,7 @@ class EmailSlotCompiler
         return HtmlUrlScrubber::scrub($rawHtml);
     }
 
-    protected function inlineCss(string $html): string
+    protected function inlineCss(CssToInlineStyles $inliner, string $html): string
     {
         do {
             $nonce = bin2hex(random_bytes(8));
@@ -139,7 +139,7 @@ class EmailSlotCompiler
             $html,
         ) ?? $html;
 
-        $inlined = $this->inliner->convert($protected);
+        $inlined = $inliner->convert($protected);
 
         return $originals === [] ? $inlined : strtr($inlined, $originals);
     }
