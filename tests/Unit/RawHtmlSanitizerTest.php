@@ -46,7 +46,7 @@ class RawHtmlSanitizerTest extends TestCase
             'svg animate' => '<svg><animate attributeName="href" values="javascript:alert(1)"/></svg>',
             'xlink href' => '<svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg><a xlink:href="javascript:alert(1)">y</a>',
             'style url javascript' => '<p style="background:url(javascript:alert(1))">x</p>',
-            'style url remote' => '<p style="background-image:url(https://evil.test/x)">x</p>',
+            'style url remote' => '<p style="list-style-image:url(https://evil.test/x)">x</p>',
             'style css escape' => '<p style="background:u\\72l(https://evil.test/x)">x</p>',
             'entity encoded scheme' => '<a href="&#106;avascript:alert(1)">x</a>',
             'tab in scheme' => "<a href=\"java\tscript:alert(1)\">x</a>",
@@ -126,7 +126,7 @@ class RawHtmlSanitizerTest extends TestCase
 
     public function test_style_declarations_that_load_or_run_things_are_removed_and_the_rest_kept(): void
     {
-        $output = $this->compileSlot('html', 'html', '<p style="color:red; background:url(https://evil.test/x); width:50%; behavior:url(x.htc); -moz-binding:url(x)">x</p>');
+        $output = $this->compileSlot('html', 'html', '<p style="color:red; list-style-image:url(https://evil.test/x); width:50%; behavior:url(x.htc); -moz-binding:url(x)">x</p>');
 
         $this->assertStringContainsString('style="color:red; width:50%"', $output);
         $this->assertStringNotContainsString('evil.test', $output);
@@ -143,11 +143,11 @@ class RawHtmlSanitizerTest extends TestCase
         $this->assertSame([['src' => 'https://cdn.example.com/a.png', 'width' => '600', 'alt' => 'x']], $this->elementAttributes($output, 'img'));
     }
 
-    public function test_cid_images_survive_and_data_uris_do_not(): void
+    public function test_cid_and_raster_data_images_survive_and_other_data_uris_do_not(): void
     {
-        $output = $this->compileSlot('html', 'html', '<img src="cid:logo" alt="a"><img src="data:image/png;base64,iVBORw0KGgo=" alt="b">');
+        $output = $this->compileSlot('html', 'html', '<img src="cid:logo" alt="a"><img src="data:image/png;base64,iVBORw0KGgo=" alt="b"><img src="data:image/svg+xml;base64,PHN2Zz4=" alt="c">');
 
-        $this->assertSame([['src' => 'cid:logo', 'alt' => 'a'], ['alt' => 'b']], $this->elementAttributes($output, 'img'));
+        $this->assertSame([['src' => 'cid:logo', 'alt' => 'a'], ['src' => 'data:image/png;base64,iVBORw0KGgo=', 'alt' => 'b'], ['alt' => 'c']], $this->elementAttributes($output, 'img'));
     }
 
     public function test_merge_tags_survive_byte_for_byte_in_links_and_text(): void

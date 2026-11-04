@@ -9,6 +9,7 @@ use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerAction;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
+use Symfony\Component\HtmlSanitizer\Visitor\AttributeSanitizer\UrlAttributeSanitizer;
 
 final class RawHtmlSanitizer
 {
@@ -19,16 +20,16 @@ final class RawHtmlSanitizer
     private const ELEMENTS = [
         'div', 'span', 'p', 'br', 'hr', 'a', 'img',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'u', 's', 'small',
-        'sup', 'sub', 'blockquote', 'center', 'font', 'pre', 'code',
+        'sup', 'sub', 'blockquote', 'center', 'font', 'pre', 'code', 'del', 'ins', 'mark',
     ];
 
     private const UNWRAPPED_ELEMENTS = [
         'form', 'label', 'button', 'fieldset', 'legend', 'section', 'article', 'header', 'footer', 'main', 'nav', 'aside',
         'figure', 'figcaption', 'details', 'summary', 'address', 'dl', 'dt', 'dd', 'caption', 'colgroup', 'col', 'abbr',
-        'cite', 'del', 'ins', 'mark', 'q', 'big', 'tt', 'strike', 'dfn', 'kbd', 'samp', 'var', 'time', 'picture', 'html', 'body',
+        'cite', 'q', 'big', 'tt', 'strike', 'dfn', 'kbd', 'samp', 'var', 'time', 'picture', 'html', 'body',
     ];
 
-    private const GLOBAL_ATTRIBUTES = ['style', 'class', 'width', 'height', 'align', 'valign', 'bgcolor', 'border', 'cellpadding', 'cellspacing', 'colspan', 'rowspan', 'role', 'dir', 'lang', 'alt', 'title'];
+    private const GLOBAL_ATTRIBUTES = ['style', 'class', 'width', 'height', 'align', 'valign', 'bgcolor', 'border', 'cellpadding', 'cellspacing', 'colspan', 'rowspan', 'nowrap', 'role', 'dir', 'lang', 'alt', 'title'];
 
     private const MEDIA_SCHEMES = ['http', 'https', 'cid'];
 
@@ -76,13 +77,22 @@ final class RawHtmlSanitizer
      */
     private static function sanitizer(array $mergeTags, bool $rich, int $inputLength): HtmlSanitizer
     {
-        $config = (new HtmlSanitizerConfig)
+        $config = new HtmlSanitizerConfig;
+
+        foreach ($config->getAttributeSanitizers() as $attributeSanitizer) {
+            if ($attributeSanitizer instanceof UrlAttributeSanitizer) {
+                $config = $config->withoutAttributeSanitizer($attributeSanitizer);
+            }
+        }
+
+        $config = $config
             ->defaultAction(HtmlSanitizerAction::Drop)
             ->allowLinkSchemes(SafeUrl::linkSchemes())
             ->allowMediaSchemes(self::MEDIA_SCHEMES)
             ->allowRelativeLinks()
             ->allowRelativeMedias()
             ->withMaxInputLength(max(self::maxBytes(), $inputLength))
+            ->withAttributeSanitizer(new MarkupUrlAttributeSanitizer)
             ->withAttributeSanitizer(new StyleAttributeSanitizer($mergeTags));
 
         foreach ([...self::ELEMENTS, ...($rich ? [] : self::TABLE_ELEMENTS)] as $element) {
@@ -91,6 +101,12 @@ final class RawHtmlSanitizer
 
         foreach ([...self::UNWRAPPED_ELEMENTS, ...($rich ? self::TABLE_ELEMENTS : [])] as $element) {
             $config = $config->blockElement($element);
+        }
+
+        if (! $rich) {
+            $config = $config
+                ->allowElement('td', [...self::GLOBAL_ATTRIBUTES, 'background'])
+                ->allowElement('table', [...self::GLOBAL_ATTRIBUTES, 'background']);
         }
 
         return new HtmlSanitizer($config
