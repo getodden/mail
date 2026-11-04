@@ -10,8 +10,10 @@ use Illuminate\Validation\ValidationException;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException;
 use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
 use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Support\BlockMergeTags;
 use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 /**
@@ -49,6 +51,8 @@ final class PreviewRenderer
             return $this->compiler->compileDocument($document, ['editor_markers' => true, 'fetch_feeds' => false]);
         } catch (RawHtmlTooLargeException $exception) {
             throw ValidationException::withMessages([$this->offendingSlot($document) => [$exception->getMessage()]]);
+        } catch (InvalidMergeTagStructureException $exception) {
+            throw ValidationException::withMessages([$this->offendingField($document, $exception) => $exception->descriptions()]);
         }
     }
 
@@ -59,6 +63,29 @@ final class PreviewRenderer
                 SlotDataSanitizer::slot($slot);
             } catch (RawHtmlTooLargeException) {
                 return "slots.{$index}.data";
+            } catch (InvalidMergeTagStructureException) {
+                continue;
+            }
+        }
+
+        return 'slots';
+    }
+
+    private function offendingField(EmailDocument $document, InvalidMergeTagStructureException $exception): string
+    {
+        foreach (['subject' => $document->subject, 'preview_text' => $document->previewText] as $field => $text) {
+            if ($exception->field === $field && $text !== null && BlockMergeTags::validate($text) !== []) {
+                return $field;
+            }
+        }
+
+        foreach ($document->slots as $index => $slot) {
+            try {
+                SlotDataSanitizer::slot($slot);
+            } catch (InvalidMergeTagStructureException $found) {
+                return "slots.{$index}.data.{$found->field}";
+            } catch (RawHtmlTooLargeException) {
+                continue;
             }
         }
 

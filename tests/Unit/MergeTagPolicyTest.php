@@ -8,6 +8,7 @@ use Dom\HTMLDocument;
 use DOMDocument;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException;
 use Odden\MailBuilder\Mail\TemplateMailable;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
 use Odden\MailBuilder\Support\RawHtmlSanitizer;
@@ -240,7 +241,11 @@ class MergeTagPolicyTest extends TestCase
         foreach ([false, true] as $nope) {
             foreach (self::markupSlots() as [$type, $field]) {
                 foreach ([true, false] as $inlineCss) {
-                    $output = $this->compileWith($type, $field, $payload, ['nope' => $nope], $inlineCss);
+                    try {
+                        $output = $this->compileWith($type, $field, $payload, ['nope' => $nope], $inlineCss);
+                    } catch (InvalidMergeTagStructureException) {
+                        continue;
+                    }
 
                     $this->assertSame([], $this->eventAttributes($output), "{$type} nope=".var_export($nope, true).": {$output}");
                 }
@@ -253,10 +258,14 @@ class MergeTagPolicyTest extends TestCase
     {
         foreach ([false, true] as $nope) {
             foreach (self::markupSlots() as [$type, $field]) {
-                $mailable = new TemplateMailable(
-                    template: EmailDocument::fromArray(['slots' => [['type' => $type, 'data' => [$field => $payload]]]]),
-                    data: ['nope' => $nope],
-                );
+                try {
+                    $mailable = new TemplateMailable(
+                        template: EmailDocument::fromArray(['slots' => [['type' => $type, 'data' => [$field => $payload]]]]),
+                        data: ['nope' => $nope],
+                    );
+                } catch (InvalidMergeTagStructureException) {
+                    continue;
+                }
 
                 $this->assertSame([], $this->eventAttributes($mailable->compiledHtml), $mailable->compiledHtml);
             }

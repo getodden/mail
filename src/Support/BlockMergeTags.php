@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Odden\MailBuilder\Support;
 
+use Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException;
+
 final class BlockMergeTags
 {
     private const TOKEN = '/\{%[^<>{}]*%\}|\{\{\s*[#\/^][^<>{}]*\}\}|\{\{\s*else\b[^<>{}]*\}\}/i';
@@ -29,6 +31,15 @@ final class BlockMergeTags
         }
 
         return str_replace(['{', '}'], '', $html);
+    }
+
+    public static function assertValid(string $field, ?string $text): void
+    {
+        $problems = $text === null ? [] : self::validate($text);
+
+        if ($problems !== []) {
+            throw InvalidMergeTagStructureException::in($field, $problems);
+        }
     }
 
     /**

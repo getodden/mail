@@ -23,7 +23,7 @@ final class SlotDataSanitizer
      * @param  array<int, SlotField>  $fields
      * @return array<string, mixed>
      */
-    public static function data(array $data, array $fields): array
+    public static function data(array $data, array $fields, string $path = ''): array
     {
         foreach ($fields as $field) {
             $value = $data[$field->key] ?? null;
@@ -36,8 +36,9 @@ final class SlotDataSanitizer
 
             if ($field->type === FieldType::Items && is_array($value)) {
                 $data[$field->key] = array_map(
-                    fn (mixed $item): mixed => is_array($item) ? self::data($item, $field->items) : $item,
+                    fn (mixed $item, int|string $index): mixed => is_array($item) ? self::data($item, $field->items, $path.$field->key.'.'.$index.'.') : $item,
                     $value,
+                    array_keys($value),
                 );
 
                 continue;
@@ -56,13 +57,25 @@ final class SlotDataSanitizer
             }
 
             if ($field->type === FieldType::RichText || $field->rawHtml) {
-                self::markup($data, $field->key, $value, $field->rawHtml ? RawHtmlSanitizer::PROFILE_HTML : RawHtmlSanitizer::PROFILE_RICH);
+                self::markup($data, $path.$field->key, $field->key, $value, $field->rawHtml ? RawHtmlSanitizer::PROFILE_HTML : RawHtmlSanitizer::PROFILE_RICH);
+
+                continue;
+            }
+
+            if ($field->type === FieldType::Tags && is_array($value)) {
+                foreach ($value as $index => $tag) {
+                    BlockMergeTags::assertValid($path.$field->key.'.'.$index, is_string($tag) ? $tag : null);
+                }
 
                 continue;
             }
 
             if (! is_string($value)) {
                 continue;
+            }
+
+            if (in_array($field->type, [FieldType::Text, FieldType::Textarea], true)) {
+                BlockMergeTags::assertValid($path.$field->key, $value);
             }
 
             match ($field->type) {
@@ -79,14 +92,26 @@ final class SlotDataSanitizer
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function markup(array &$data, string $key, mixed $value, string $profile): void
+    private static function markup(array &$data, string $name, string $key, mixed $value, string $profile): void
     {
         if ($value === null) {
             return;
         }
 
         if (is_scalar($value)) {
-            $data[$key] = RawHtmlSanitizer::sanitize((string) $value, $profile);
+            $rich = $profile === RawHtmlSanitizer::PROFILE_RICH;
+
+            if ($rich) {
+                BlockMergeTags::assertValid($name, (string) $value);
+            }
+
+            $sanitized = RawHtmlSanitizer::sanitize((string) $value, $profile);
+
+            if ($rich) {
+                BlockMergeTags::assertValid($name, $sanitized);
+            }
+
+            $data[$key] = $sanitized;
 
             return;
         }

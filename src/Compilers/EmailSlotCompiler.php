@@ -9,6 +9,7 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
+use Odden\MailBuilder\Support\BlockMergeTags;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
 use Odden\MailBuilder\Support\MergeTagGuard;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
@@ -50,6 +51,9 @@ class EmailSlotCompiler
         $interpolate = (bool) ($options['interpolate'] ?? false);
 
         $editorMarkers = (bool) ($options['editor_markers'] ?? false);
+
+        BlockMergeTags::assertValid('subject', $document->subject);
+        BlockMergeTags::assertValid('preview_text', $document->previewText);
 
         $slotsHtml = '';
         foreach ($document->slots as $index => $slot) {
