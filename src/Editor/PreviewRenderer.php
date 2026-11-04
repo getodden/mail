@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\DocumentTooLargeException;
 use Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException;
 use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
 use Odden\MailBuilder\Schema\SlotRegistry;
@@ -51,6 +52,8 @@ final class PreviewRenderer
             return $this->compiler->compileDocument($document, ['editor_markers' => true, 'fetch_feeds' => false]);
         } catch (RawHtmlTooLargeException $exception) {
             throw ValidationException::withMessages([$this->offendingSlot($document) => [$exception->getMessage()]]);
+        } catch (DocumentTooLargeException $exception) {
+            throw ValidationException::withMessages(['slots' => [$exception->getMessage()]]);
         } catch (InvalidMergeTagStructureException $exception) {
             throw ValidationException::withMessages([$this->offendingField($document, $exception) => $exception->descriptions()]);
         }

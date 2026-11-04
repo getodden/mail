@@ -8,11 +8,13 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\DocumentTooLargeException;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
 use Odden\MailBuilder\Support\BlockMergeTags;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
 use Odden\MailBuilder\Support\MergeTagGuard;
 use Odden\MailBuilder\Support\OutboundUrlGuard;
+use Odden\MailBuilder\Support\PackageConfig;
 use Odden\MailBuilder\Support\SafeColor;
 use Odden\MailBuilder\Support\SlotDataSanitizer;
 use Odden\MailBuilder\Themes\FontManager;
@@ -55,6 +57,7 @@ class EmailSlotCompiler
         BlockMergeTags::assertValid('subject', $document->subject);
         BlockMergeTags::assertValid('preview_text', $document->previewText);
 
+        $limit = $this->maxDocumentBytes();
         $slotsHtml = '';
         foreach ($document->slots as $index => $slot) {
             if ($context !== null && ! $slot->matchesContext($context)) {
@@ -64,6 +67,10 @@ class EmailSlotCompiler
             $compiled = $this->compileSlot($slot, $theme, ['fetch_feeds' => $options['fetch_feeds'] ?? true]);
 
             $slotsHtml .= $editorMarkers ? '<div data-odden-slot="'.$index.'">'.$compiled.'</div>' : $compiled;
+
+            if (strlen($slotsHtml) > $limit) {
+                throw DocumentTooLargeException::exceeding($limit);
+            }
         }
 
         $previewText = $document->previewText;
@@ -114,6 +121,13 @@ class EmailSlotCompiler
         }
 
         return HtmlUrlScrubber::scrub($rawHtml);
+    }
+
+    protected function maxDocumentBytes(): int
+    {
+        $configured = PackageConfig::get('mail-builder.max_document_bytes', 1500000);
+
+        return is_numeric($configured) ? max(1, (int) $configured) : 1500000;
     }
 
     protected function inlineCss(CssToInlineStyles $inliner, string $html): string
