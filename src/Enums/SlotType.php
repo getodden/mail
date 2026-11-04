@@ -35,6 +35,7 @@ enum SlotType: string
     case AppBadges = 'app_badges';
     case DataTable = 'data_table';
     case LabeledDivider = 'labeled_divider';
+    case Event = 'event';
 
     public function label(): string
     {
@@ -68,6 +69,7 @@ enum SlotType: string
             self::AppBadges => 'App Store & Google Play Badges',
             self::DataTable => 'Data & Comparison Table',
             self::LabeledDivider => 'Labeled Section Divider',
+            self::Event => 'Event Details & RSVP',
         };
     }
 
@@ -104,6 +106,7 @@ enum SlotType: string
             self::AppBadges => 'App badges',
             self::DataTable => 'Table',
             self::LabeledDivider => 'Section label',
+            self::Event => 'Event',
         };
     }
 
@@ -123,6 +126,7 @@ enum SlotType: string
             self::Accordion => SlotGroup::Content,
             self::VideoCard => SlotGroup::Content,
             self::Html => SlotGroup::Content,
+            self::Event => SlotGroup::Content,
             self::TwoColumn => SlotGroup::Layout,
             self::ThreeColumn => SlotGroup::Layout,
             self::FourColumn => SlotGroup::Layout,
@@ -174,6 +178,7 @@ enum SlotType: string
             self::AppBadges => 'Mobile application download badges for Apple App Store and Google Play Store.',
             self::DataTable => 'Structured multi-column data comparison table with headers and zebra striping.',
             self::LabeledDivider => 'Visual separator rule with centered text label or pill.',
+            self::Event => 'Event card with title, date, time, location, description, and a registration button.',
         };
     }
 
@@ -209,6 +214,7 @@ enum SlotType: string
             self::AppBadges => 'mail-builder::slots.app-badges',
             self::DataTable => 'mail-builder::slots.data-table',
             self::LabeledDivider => 'mail-builder::slots.labeled-divider',
+            self::Event => 'mail-builder::slots.event',
         };
     }
 }

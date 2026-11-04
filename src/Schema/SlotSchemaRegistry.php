@@ -37,6 +37,7 @@ final class SlotSchemaRegistry
             SlotType::FourColumn,
             SlotType::AsymmetricColumns,
             SlotType::Features,
+            SlotType::Event,
             SlotType::Testimonial,
             SlotType::StatBox,
             SlotType::SocialLinks,
@@ -77,6 +78,7 @@ final class SlotSchemaRegistry
             SlotType::FourColumn => self::fourColumn(),
             SlotType::AsymmetricColumns => self::asymmetricColumns(),
             SlotType::Features => self::features(),
+            SlotType::Event => self::event(),
             SlotType::Testimonial => self::testimonial(),
             SlotType::StatBox => self::statBox(),
             SlotType::SocialLinks => self::socialLinks(),
@@ -256,6 +258,20 @@ final class SlotSchemaRegistry
             ]),
             new SlotField('bg_color', FieldType::Color, 'Background Color', default: '#f8fafc', advanced: true),
         ]);
+    }
+
+    private static function event(): SlotSchema
+    {
+        return new SlotSchema(SlotType::Event, 'clock', [
+            new SlotField('title', FieldType::Text, 'Event Title', required: true, fullWidth: true),
+            new SlotField('date', FieldType::Text, 'Date', required: true, placeholder: 'e.g. Saturday, 14 June'),
+            new SlotField('time', FieldType::Text, 'Time', placeholder: 'e.g. 6:00 PM - 9:00 PM'),
+            new SlotField('location', FieldType::Text, 'Location', placeholder: 'e.g. The Tasting Room, 12 Main St', fullWidth: true),
+            new SlotField('description', FieldType::Textarea, 'Description', rows: 3, fullWidth: true),
+            new SlotField('button_text', FieldType::Text, 'Button Label', placeholder: 'e.g. Reserve Your Spot'),
+            new SlotField('button_url', FieldType::Url, 'Button URL', placeholder: 'https://...'),
+            new SlotField('bg_color', FieldType::Color, 'Background Color', advanced: true),
+        ], columns: 2, supportsVisibility: true);
     }
 
     private static function divider(): SlotSchema

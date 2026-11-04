@@ -75,6 +75,7 @@ class PlainTextExtractor
             SlotType::AppBadges => $this->extractAppBadges($slot),
             SlotType::DataTable => $this->extractDataTable($slot),
             SlotType::LabeledDivider => $this->extractLabeledDivider($slot),
+            SlotType::Event => $this->extractEvent($slot),
         };
     }
 
@@ -257,6 +258,31 @@ class PlainTextExtractor
             $lines[] = $address;
         }
         $lines[] = "Unsubscribe: {$unsubscribeUrl}";
+
+        return implode("\n", $lines);
+    }
+
+    protected function extractEvent(EmailSlot $slot): string
+    {
+        $lines = [(string) $slot->get('title', '')];
+
+        foreach (['date' => 'Date', 'time' => 'Time', 'location' => 'Location'] as $key => $label) {
+            $value = (string) $slot->get($key, '');
+            if ($value !== '') {
+                $lines[] = "{$label}: {$value}";
+            }
+        }
+
+        $description = (string) $slot->get('description', '');
+        if ($description !== '') {
+            $lines[] = $description;
+        }
+
+        $buttonText = (string) $slot->get('button_text', '');
+        $buttonUrl = (string) $slot->get('button_url', '');
+        if ($buttonText !== '' && $buttonUrl !== '') {
+            $lines[] = "{$buttonText}: {$buttonUrl}";
+        }
 
         return implode("\n", $lines);
     }

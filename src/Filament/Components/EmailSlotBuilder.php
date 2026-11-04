@@ -60,6 +60,7 @@ class EmailSlotBuilder
                 self::getAppBadgesBlock(),
                 self::getDataTableBlock(),
                 self::getLabeledDividerBlock(),
+                self::getEventBlock(),
                 self::getHtmlBlock(),
                 ...array_map(
                     fn (CustomSlotType $type): Block => SchemaBlockFactory::fromSchema($type->schema()),
@@ -194,6 +195,14 @@ class EmailSlotBuilder
     public static function getRatingBarBlock(): Block
     {
         return SchemaBlockFactory::make(SlotType::RatingBar);
+    }
+
+    /**
+     * Event Block Definition.
+     */
+    public static function getEventBlock(): Block
+    {
+        return SchemaBlockFactory::make(SlotType::Event);
     }
 
     /**

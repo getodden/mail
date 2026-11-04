@@ -6,7 +6,7 @@
 
 A modular, Outlook-bulletproof email building, auditing, and compilation engine for Laravel applications.
 
-Build an email from 29 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
+Build an email from 30 responsive blocks (in code, in a Filament form, or in a drag-and-drop editor), audit it before it goes out, and compile it to inlined HTML, AMP for Email, MJML, or plain text. It is a plain Laravel package: the compiler is PHP, with no Node step at send time.
 
 [![The drag-and-drop editor: adding a quote block, typing its text, moving it up the email and switching to the mobile preview](docs/editor.gif)](https://odden.io/open-source/mail-builder)
 
@@ -14,13 +14,13 @@ Build an email from 29 responsive blocks (in code, in a Filament form, or in a d
 
 Requires PHP 8.3+ and Laravel 12 or 13. Maintained by [CaskStack, LLC](https://odden.io).
 
-**Status:** All 29 slot types are rendered by the compiler, described in the slot schema, and editable in both the Filament builder and the drag-and-drop editor.
+**Status:** All 30 slot types are rendered by the compiler, described in the slot schema, and editable in both the Filament builder and the drag-and-drop editor.
 
 ---
 
 ## Key Features
 
-- **29 Modular Responsive Slots:** Pre-built responsive components that collapse smoothly to 100% width on mobile devices, with Microsoft Outlook MSO conditional table compatibility.
+- **30 Modular Responsive Slots:** Pre-built responsive components that collapse smoothly to 100% width on mobile devices, with Microsoft Outlook MSO conditional table compatibility.
 - **Universal Compilation Engine:** Compile modular slots or structured `EmailDocument` instances into inlined responsive HTML (`EmailSlotCompiler`) or interactive AMP for Email (`AmpEmailCompiler`).
 - **Liquid-Style Personalization:** Fast token interpolation supporting uppercase, lowercase, capitalize, date formatting, currency, number, pluralize, default values, and inline conditionals (`{% if condition %}...{% else %}...{% endif %}`).
 - **Deliverability & Spam Auditor:** Automatic pre-flight auditing scoring unsubscribe links, image alt text, subject lines, mailing address, Gmail clipping, Outlook rendering and WCAG contrast, and live DNS deliverability checks (SPF, DMARC, BIMI).
@@ -270,7 +270,7 @@ return response()->json(SlotSchemaRegistry::toArray()); // everything an editor 
 
 A field has a `key`, a `type` (`text`, `textarea`, `rich_text`, `url`, `image`, `color`, `select`, `toggle`, `number`, `tags`, `items`), a `label`, `required`, a `default`, and, where they apply, `placeholder`, `help`, `options` and the item fields of a list. Fields marked `advanced` are read by the slot's view but kept out of the basic form: an editor shows them as style options.
 
-All 29 slot types are described, so the editor and the Filament blocks can edit every one of them (see [Supported Slot Types](#supported-slot-types-29-total)). Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
+All 30 slot types are described, so the editor and the Filament blocks can edit every one of them (see [Supported Slot Types](#supported-slot-types-30-total)). Tests check that every described field is read by its slot's view, so the description cannot drift from what is rendered.
 
 ### 8. Drag-and-drop editor
 
@@ -349,7 +349,7 @@ The field's theme wins over a theme sent by the browser.
 - **It follows the form.** When the form changes the state itself, for example an action that applies a preset with `$set('slots', ...)`, the editor shows the new content.
 - A disabled field is shown but cannot be edited.
 
-## Supported Slot Types (29 Total)
+## Supported Slot Types (30 Total)
 
 | Slot Type | Key | Description |
 | :--- | :--- | :--- |
@@ -362,6 +362,7 @@ The field's theme wins over a theme sent by the browser.
 | **4-Column Wall** | `four_column` | Partner logo trust wall or compact icon links |
 | **Asymmetric Split** | `asymmetric_columns` | 1/3 + 2/3 editorial sidebar split |
 | **Feature List** | `features` | Bulleted list with icons, bold titles, and descriptions |
+| **Event Details** | `event` | Event card with date, time, location, description, and a registration button |
 | **Testimonial** | `testimonial` | Quote callout with star rating and author attribution |
 | **Stat Box** | `stat_box` | Key metric numbers and percentage badges |
 | **Divider Line** | `divider` | Horizontal rule or spacer with configurable height |
