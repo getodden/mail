@@ -31,6 +31,66 @@ final class BlockMergeTags
         return str_replace(['{', '}'], '', $html);
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function validate(string $text): array
+    {
+        if (! str_contains($text, '{') || preg_match_all(self::TOKEN, $text, $matches) === 0) {
+            return [];
+        }
+
+        $problems = [];
+        $open = [];
+
+        foreach ($matches[0] as $token) {
+            [$kind, $name] = self::classify($token);
+
+            switch ($kind) {
+                case 'open':
+                    if ($open !== []) {
+                        $problems[] = 'nested_block';
+                    }
+
+                    $open[] = ['name' => $name, 'else' => false];
+
+                    break;
+                case 'close':
+                    if ($open === []) {
+                        $problems[] = 'unbalanced_closer';
+
+                        break;
+                    }
+
+                    if ($open[count($open) - 1]['name'] !== $name) {
+                        $problems[] = 'mismatched_closer';
+                    }
+
+                    array_pop($open);
+
+                    break;
+                case 'else':
+                    if ($open === [] || $open[count($open) - 1]['else']) {
+                        $problems[] = 'unbalanced_closer';
+
+                        break;
+                    }
+
+                    $open[count($open) - 1]['else'] = true;
+
+                    break;
+                default:
+                    $problems[] = 'unknown_block_tag';
+            }
+        }
+
+        if ($open !== []) {
+            $problems[] = 'unbalanced_opener';
+        }
+
+        return array_values(array_unique($problems));
+    }
+
     private static function once(string $html): string
     {
         if (preg_match_all(self::TOKEN, $html, $matches, PREG_OFFSET_CAPTURE) === 0) {
@@ -101,11 +161,19 @@ final class BlockMergeTags
                 return ['open', $name];
             }
 
+            if (in_array($name, ['else', 'elif', 'elseif'], true)) {
+                return ['else', $name];
+            }
+
             if (str_starts_with($name, 'end') && in_array(substr($name, 3), self::OPENERS, true)) {
                 return ['close', substr($name, 3)];
             }
 
             return ['other', $name];
+        }
+
+        if (preg_match('/^\{\{\s*else\b/i', $token) === 1) {
+            return ['else', 'else'];
         }
 
         preg_match('/^\{\{\s*([#\/^])\s*([a-z_]+)/i', $token, $word);
