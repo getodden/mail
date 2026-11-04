@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Mail\TemplateMailable;
 use Odden\MailBuilder\MailBuilder;
 use Odden\MailBuilder\MergeTags\MergeTagInterpolator;
@@ -24,12 +25,12 @@ it('escapes values from the context where asked, but not the template author\'s 
         ->and($out)->not->toContain('<script>');
 });
 
-it('puts markup in through the raw filter, and only there', function (): void {
+it('puts markup in through the raw filter only when the caller allows it, and only there', function (): void {
     $interpolator = new MergeTagInterpolator;
+    $context = ['table' => '<table></table>', 'note' => '<i>x</i>'];
 
-    $out = $interpolator->interpolate('{{ table | raw }} / {{ note }}', ['table' => '<table></table>', 'note' => '<i>x</i>'], escape: true);
-
-    expect($out)->toBe('<table></table> / &lt;i&gt;x&lt;/i&gt;');
+    expect($interpolator->interpolate('{{ table | raw }} / {{ note }}', $context, escape: true, allowRaw: true))->toBe('<table></table> / &lt;i&gt;x&lt;/i&gt;')
+        ->and($interpolator->interpolate('{{ table | raw }} / {{ note }}', $context, escape: true))->toBe('&lt;table&gt;&lt;/table&gt; / &lt;i&gt;x&lt;/i&gt;');
 });
 
 it('applies the other filters before escaping', function (): void {
@@ -70,4 +71,60 @@ it('only sends a List-Unsubscribe header for an http(s) or mailto address with n
 it('keeps MailBuilder::interpolate unescaped by default for the campaign code that escapes its own values', function (): void {
     expect(MailBuilder::interpolate('{{ a }}', ['a' => '<b>']))->toBe('<b>')
         ->and(MailBuilder::interpolate('{{ a }}', ['a' => '<b>'], escape: true))->toBe('&lt;b&gt;');
+});
+
+dataset('markup slots', [
+    'html slot' => [['type' => 'html', 'field' => 'html']],
+    'body text slot' => [['type' => 'body_text', 'field' => 'content']],
+]);
+
+it('escapes a raw filtered value in a document, however the tag was written', function (array $slot, string $content): void {
+    $html = MailBuilder::compile(
+        [['type' => $slot['type'], 'data' => [$slot['field'] => $content]]],
+        ['interpolate' => true, 'context' => ['name' => '<img src=x onerror=alert(1)>']],
+    );
+
+    expect($html)->toContain('&lt;img src=x onerror=alert(1)&gt;')
+        ->and($html)->not->toContain('<img src=x');
+})->with('markup slots')->with([
+    'plain' => ['<p>{{ name | raw }}</p>'],
+    'formed after sanitizing' => ['<p>{<script></script>{ name | raw }<script></script>}</p>'],
+]);
+
+it('escapes a raw filtered value in a TemplateMailable built from a document', function (array $slot, string $content): void {
+    $mail = new TemplateMailable(
+        template: EmailDocument::fromArray(['slots' => [['type' => $slot['type'], 'data' => [$slot['field'] => $content]]]]),
+        data: ['name' => '<img src=x onerror=alert(1)>'],
+    );
+
+    expect($mail->compiledHtml)->toContain('&lt;img src=x onerror=alert(1)&gt;')
+        ->and($mail->compiledHtml)->not->toContain('<img src=x');
+})->with('markup slots')->with([
+    'plain' => ['<p>{{ name | raw }}</p>'],
+    'formed after sanitizing' => ['<p>{<script></script>{ name | raw }<script></script>}</p>'],
+]);
+
+it('escapes a raw filtered value in a TemplateMailable built from slot arrays', function (): void {
+    $mail = new TemplateMailable(
+        template: [['type' => 'body_text', 'data' => ['content' => '<p>{{ name | raw }}</p>']]],
+        data: ['name' => '<img src=x onerror=alert(1)>'],
+    );
+
+    expect($mail->compiledHtml)->not->toContain('<img src=x');
+});
+
+it('keeps the raw filter for a template string the host app wrote', function (): void {
+    $mail = new TemplateMailable(template: '<p>{{ table | raw }}</p>', data: ['table' => '<table><tr><td>1</td></tr></table>']);
+
+    expect($mail->compiledHtml)->toContain('<p><table><tr><td>1</td></tr></table></p>');
+});
+
+it('escapes context values when a document is compiled with interpolation', function (): void {
+    $html = MailBuilder::compile(
+        [['type' => 'body_text', 'data' => ['content' => '<p>Hi {{ name }}</p>']]],
+        ['interpolate' => true, 'context' => ['name' => '<script>alert(1)</script>']],
+    );
+
+    expect($html)->toContain('Hi &lt;script&gt;alert(1)&lt;/script&gt;')
+        ->and($html)->not->toContain('<script>alert(1)');
 });

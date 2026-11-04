@@ -43,6 +43,8 @@ class TemplateMailable extends Mailable
     ) {
         $subject = $this->subjectLine;
 
+        $hostAuthored = is_string($template);
+
         if ($template instanceof EmailDocument) {
             $html = MailBuilder::compile($template);
             $plain = MailBuilder::plainText($template);
@@ -55,9 +57,7 @@ class TemplateMailable extends Mailable
             $plain = MailBuilder::plainText($template);
         }
 
-        // Interpolate merge tags. Values are HTML-escaped where they land in the HTML ({{ tag | raw }} puts markup the template author
-        // trusts); plain text and the subject are text, and a subject is one line whatever a value held.
-        $this->compiledHtml = HtmlUrlScrubber::scrub(MailBuilder::interpolate($html, $this->data, escape: true));
+        $this->compiledHtml = HtmlUrlScrubber::scrub(MailBuilder::interpolate($html, $this->data, escape: true, allowRaw: $hostAuthored));
         $this->compiledPlainText = MailBuilder::interpolate($plain, $this->data);
         $this->subjectLine = $subject !== null
             ? trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', MailBuilder::interpolate($subject, $this->data)))

@@ -123,13 +123,11 @@ class MailBuilder
     }
 
     /**
-     * Interpolate merge tags into content using recipient context or sample fallback.
-     *
      * @param  array<string, mixed>|null  $context
      */
-    public static function interpolate(string $content, ?array $context = null, bool $escape = false): string
+    public static function interpolate(string $content, ?array $context = null, bool $escape = false, bool $allowRaw = false): string
     {
-        return self::mergeTags()->interpolate($content, $context, $escape);
+        return self::mergeTags()->interpolate($content, $context, $escape, $allowRaw);
     }
 
     /**

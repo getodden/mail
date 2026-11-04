@@ -59,7 +59,6 @@ class EmailSlotCompiler
 
             $compiled = $this->compileSlot($slot, $theme, ['fetch_feeds' => $options['fetch_feeds'] ?? true]);
 
-            // The drag-and-drop editor finds each slot in the preview by this marker. Never set it for a real send.
             $slotsHtml .= $editorMarkers ? '<div data-odden-slot="'.$index.'">'.$compiled.'</div>' : $compiled;
         }
 
@@ -75,16 +74,14 @@ class EmailSlotCompiler
         ])->render();
 
         if ($interpolate && $context !== null && $this->interpolator !== null) {
-            $rawHtml = $this->interpolator->interpolate($rawHtml, $context);
+            $rawHtml = $this->interpolator->interpolate($rawHtml, $context, escape: true);
         }
 
-        // Inject Web Font imports & MSO typography fallbacks if specified
         if (! empty($theme['font_family']) && is_string($theme['font_family']) && str_contains($rawHtml, '</head>')) {
             $typography = FontManager::generateHeadTypography($theme['font_family']);
             $rawHtml = str_replace('</head>', "{$typography}\n</head>", $rawHtml);
         }
 
-        // Inject Gmail Quick Action (Schema.org) if provided
         if (! empty($options['gmail_action']) || ! empty($options['gmail_actions'])) {
             $compiler = new GmailActionCompiler;
             if (! empty($options['gmail_action']) && is_array($options['gmail_action'])) {
@@ -108,7 +105,6 @@ class EmailSlotCompiler
             $rawHtml = preg_replace('/^<!doctype html>/i', '<!DOCTYPE html>', $rawHtml) ?? $rawHtml;
         }
 
-        // Optimize image tags for Outlook MSO and Retina displays
         if ((bool) ($options['optimize_images'] ?? true)) {
             $rawHtml = EmailImageOptimizer::optimize($rawHtml);
         }
