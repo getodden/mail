@@ -48,7 +48,7 @@ class EmailSlotCompiler
      */
     public function compileDocument(EmailDocument $document, array $options = []): string
     {
-        $theme = array_merge($this->defaultConfig, $document->theme, $options['theme'] ?? []);
+        $theme = SafeColor::theme(array_merge($this->defaultConfig, $document->theme, $options['theme'] ?? []));
         /** @var array<string, mixed>|null $context */
         $context = $options['context'] ?? null;
         $inlineCss = (bool) ($options['inline_css'] ?? true);
@@ -170,7 +170,7 @@ class EmailSlotCompiler
         return $this->view->make($viewName, [
             'slot' => $slot,
             'data' => $data,
-            'theme' => array_merge($this->defaultConfig, $theme),
+            'theme' => SafeColor::theme(array_merge($this->defaultConfig, $theme)),
         ])->render();
     }
 
@@ -211,6 +211,18 @@ class EmailSlotCompiler
                 continue;
             }
 
+            if ($field->type === FieldType::Number) {
+                $this->sanitizeNumber($data, $field->key, $value);
+
+                continue;
+            }
+
+            if ($field->type === FieldType::Select) {
+                $this->sanitizeSelect($data, $field, $value);
+
+                continue;
+            }
+
             if (! is_string($value)) {
                 continue;
             }
@@ -224,6 +236,44 @@ class EmailSlotCompiler
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function sanitizeNumber(array &$data, string $key, mixed $value): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        if ((is_int($value) || is_float($value) || is_string($value)) && is_numeric($value)) {
+            $number = $value + 0;
+
+            if (! is_float($number) || is_finite($number)) {
+                $data[$key] = $number;
+
+                return;
+            }
+        }
+
+        unset($data[$key]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function sanitizeSelect(array &$data, SlotField $field, mixed $value): void
+    {
+        if ($value === null || $field->options === []) {
+            return;
+        }
+
+        $allowed = array_map(fn (array $option): string => (string) $option['value'], $field->options);
+
+        if (! is_scalar($value) || ! in_array((string) $value, $allowed, true)) {
+            unset($data[$field->key]);
+        }
     }
 
     /**

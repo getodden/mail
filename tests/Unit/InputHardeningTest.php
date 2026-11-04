@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Odden\MailBuilder\Tests\Unit;
 
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
+use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Schema\FieldType;
@@ -251,7 +252,10 @@ class InputHardeningTest extends TestCase
             'url function' => ['url(https://x/t)', false],
             'bad hex length' => ['#ffff0', false],
             'keyword with digits' => ['red1', false],
-            'rgb with letters' => ['rgb(1, 2, expression)', false],
+            'hsl with unit' => ['hsl(120deg, 50%, 50%)', true],
+            'rgb with a keyword argument' => ['rgb(1, 2, expression)', true],
+            'rgb with punctuation' => ['rgb(1, 2, 3); x', false],
+            'rgb with nested call' => ['rgb(url(x))', false],
             'empty' => ['', false],
         ];
     }
@@ -260,6 +264,46 @@ class InputHardeningTest extends TestCase
     public function test_color_validation(string $value, bool $valid): void
     {
         $this->assertSame($valid ? $value : null, SafeColor::for($value));
+    }
+
+    public function test_a_css_url_cannot_be_broken_out_of_by_the_video_thumbnail(): void
+    {
+        $html = $this->compile(SlotType::VideoCard, ['thumbnail_url' => "x'); background:url(https://evil.test/x)"]);
+
+        $this->assertStringNotContainsString('evil.test/x)', $html);
+        $this->assertStringContainsString("url('x%27%29;%20background:url%28https://evil.test/x%29')", $html);
+        $this->assertSame(1, substr_count($html, 'url('));
+    }
+
+    public function test_a_number_field_is_cast_and_a_non_number_falls_back_to_the_default(): void
+    {
+        $this->assertStringContainsString('padding: 30px', $this->compile(SlotType::BodyText, ['content' => 'x', 'padding_top' => '30']));
+        $this->assertStringContainsString('padding: 24px 32px 24px 32px', $this->compile(SlotType::BodyText, ['content' => 'x', 'padding_top' => '1px;background:red']));
+        $this->assertStringNotContainsString('background:red', $this->compile(SlotType::BodyText, ['content' => 'x', 'padding_top' => '1px;background:red']));
+        $this->assertStringContainsString('padding: 24px 32px', $this->compile(SlotType::BodyText, ['content' => 'x', 'padding_top' => ['a']]));
+    }
+
+    public function test_a_select_value_outside_its_options_falls_back_to_the_default(): void
+    {
+        $html = $this->compile(SlotType::BodyText, ['content' => 'x', 'align' => 'left;background:red']);
+
+        $this->assertStringNotContainsString('background:red', $html);
+        $this->assertStringContainsString('text-align: left', $html);
+        $this->assertStringContainsString('text-align: right', $this->compile(SlotType::BodyText, ['content' => 'x', 'align' => 'right']));
+    }
+
+    public function test_an_invalid_theme_color_is_dropped_so_the_default_applies(): void
+    {
+        $slot = new EmailSlot(SlotType::Event, ['title' => 'Party', 'date' => 'Soon']);
+        $html = app(EmailSlotCompiler::class)->compileSlot($slot, ['primary_color' => 'red;background:url(https://x/t)']);
+
+        $this->assertStringNotContainsString('https://x/t', $html);
+        $this->assertStringContainsString('#2563eb', $html);
+
+        $document = new EmailDocument(theme: ['text_color' => '#000;}</style><script>x</script>']);
+        $document->append(SlotType::BodyText, ['content' => 'x']);
+
+        $this->assertStringNotContainsString('<script>x', app(EmailSlotCompiler::class)->compileDocument($document));
     }
 
     public function test_unknown_keys_and_raw_html_are_untouched(): void

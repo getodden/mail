@@ -8,6 +8,7 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\SafeColor;
 
 class AmpEmailCompiler
 {
@@ -23,7 +24,7 @@ class AmpEmailCompiler
             ? $documentOrSlots
             : EmailDocument::fromArray(['slots' => $documentOrSlots]);
 
-        $theme = array_merge($document->theme, $options['theme'] ?? []);
+        $theme = SafeColor::theme(array_merge($document->theme, $options['theme'] ?? []));
         $primaryColor = (string) ($theme['primary_color'] ?? '#2563EB');
         $bgColor = (string) ($theme['background_color'] ?? '#F8FAFC');
         $contentBg = (string) ($theme['content_background_color'] ?? '#FFFFFF');
