@@ -184,4 +184,22 @@ class GallerySlotTest extends TestCase
         $this->assertTrue($evaluator->isVisible($slot, ['contact' => ['region' => 'north']]));
         $this->assertFalse($evaluator->isVisible($slot, ['contact' => ['region' => 'south']]));
     }
+
+    public function test_images_that_are_not_a_list_render_no_images(): void
+    {
+        foreach (['not a list', 5, true] as $images) {
+            $html = app(EmailSlotCompiler::class)->compileSlot(new EmailSlot(SlotType::Gallery, ['heading' => 'Pics', 'images' => $images]));
+
+            $this->assertStringContainsString('Pics', $html);
+            $this->assertStringNotContainsString('<img', $html);
+        }
+    }
+
+    public function test_other_list_fields_that_are_not_lists_do_not_break_their_views(): void
+    {
+        $compiler = app(EmailSlotCompiler::class);
+
+        $this->assertIsString($compiler->compileSlot(new EmailSlot(SlotType::StatBox, ['stats' => 'x'])));
+        $this->assertIsString($compiler->compileSlot(new EmailSlot(SlotType::DataTable, ['headers' => 'x', 'rows' => 'y'])));
+    }
 }

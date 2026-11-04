@@ -196,6 +196,12 @@ class EmailSlotCompiler
         foreach ($fields as $field) {
             $value = $data[$field->key] ?? null;
 
+            if (in_array($field->type, [FieldType::Items, FieldType::Tags], true) && $value !== null && ! is_array($value)) {
+                unset($data[$field->key]);
+
+                continue;
+            }
+
             if ($field->type === FieldType::Items && is_array($value)) {
                 $data[$field->key] = array_map(
                     fn (mixed $item): mixed => is_array($item) ? $this->sanitize($item, $field->items) : $item,

@@ -1,7 +1,7 @@
 @php
     $heading = (string) ($data['heading'] ?? '');
     $perRow = (int) ($data['columns'] ?? 3) === 2 ? 2 : 3;
-    $images = array_slice(array_values(array_filter($data['images'] ?? [], fn ($image): bool => is_array($image) && ! empty($image['image_url']))), 0, 12);
+    $images = array_slice(array_values(array_filter(is_array($data['images'] ?? null) ? $data['images'] : [], fn ($image): bool => is_array($image) && ! empty($image['image_url']))), 0, 12);
     $rows = array_chunk($images, $perRow);
     $cellWidth = $perRow === 2 ? 250 : 160;
     $columnWidth = $perRow === 2 ? '48%' : '31%';
