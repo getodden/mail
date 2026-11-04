@@ -23,6 +23,8 @@ return [
         'border_radius' => '8px',
     ],
 
+    'url_schemes' => ['http', 'https', 'mailto', 'tel', 'sms', 'webcal', 'webcals', 'whatsapp', 'skype', 'geo', 'itms', 'itms-apps'],
+
     /*
     |--------------------------------------------------------------------------
     | Default Organization & Unsubscribe Information

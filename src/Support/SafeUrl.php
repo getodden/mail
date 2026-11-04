@@ -6,20 +6,25 @@ namespace Odden\MailBuilder\Support;
 
 final class SafeUrl
 {
-    private const LINK_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sms', 'webcal', 'webcals'];
+    private const DEFAULT_LINK_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sms', 'webcal', 'webcals', 'whatsapp', 'skype', 'geo', 'itms', 'itms-apps'];
 
     private const IMAGE_SCHEMES = ['http', 'https', 'mailto', 'tel', 'cid'];
 
     private const IMAGE_DATA_URI = '#^data:image/(?:png|jpe?g|gif|webp|avif|bmp);base64,#i';
 
-    private const HOST_WITH_PORT = '#^[a-z0-9-]+(?:\.[a-z0-9-]+)+:\d+(?:[/?\#]|$)#i';
+    private const HOST_WITH_PORT = '#^(?:localhost|[a-z0-9-]+(?:\.[a-z0-9-]+)+):\d+(?:[/?\#]|$)#i';
 
     /**
      * @return list<string>
      */
     public static function linkSchemes(): array
     {
-        return self::LINK_SCHEMES;
+        $configured = config('mail-builder.url_schemes', self::DEFAULT_LINK_SCHEMES);
+
+        return array_values(array_unique(array_map(
+            static fn (string $scheme): string => strtolower(trim($scheme)),
+            array_filter(is_array($configured) ? $configured : self::DEFAULT_LINK_SCHEMES, is_string(...)),
+        )));
     }
 
     public static function for(string $url, bool $forImage = false): string
@@ -41,7 +46,7 @@ final class SafeUrl
         }
 
         $scheme = strtolower($match[1]);
-        $allowed = $forImage ? self::IMAGE_SCHEMES : self::LINK_SCHEMES;
+        $allowed = $forImage ? self::IMAGE_SCHEMES : self::linkSchemes();
 
         if (in_array($scheme, $allowed, true)) {
             return $url;
