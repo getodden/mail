@@ -382,7 +382,7 @@ The field's theme wins over a theme sent by the browser.
 | **RSS Article Feed** | `rss_feed` | Syndicated blog digest with publication dates |
 | **Product Catalog** | `product_catalog` | Ecommerce cards with compare-at pricing and buy CTAs |
 | **Coupon Code** | `coupon_code` | Promo voucher card with dashed border and expiry |
-| **Footer & Compliance**| `footer` | CAN-SPAM / GDPR address and unsubscribe link |
+| **Footer & Compliance**| `footer` | CAN-SPAM / GDPR address, optional required notice or warning, and unsubscribe link |
 | **Custom Raw HTML** | `html` | Bespoke HTML code component |
 
 ---

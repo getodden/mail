@@ -319,6 +319,7 @@ final class SlotSchemaRegistry
             new SlotField('company_name', FieldType::Text, 'Legal Entity / Company Name', required: true, default: fn (): string => self::companyName()),
             new SlotField('address', FieldType::Text, 'Physical Mailing Address', required: true, placeholder: '123 Example St, Springfield'),
             new SlotField('notice', FieldType::Text, 'Permission Notice', placeholder: 'You are receiving this because you signed up on example.com'),
+            new SlotField('warning', FieldType::Textarea, 'Required Notice / Warning', rows: 2, placeholder: 'e.g. Must be 21 or older to purchase alcohol.', fullWidth: true),
             new SlotField('unsubscribe_url', FieldType::Text, 'Unsubscribe URL / Merge Tag', required: true, default: '{{unsubscribe_url}}'),
             new SlotField('preferences_url', FieldType::Url, 'Preferences URL', advanced: true),
             new SlotField('copyright_year', FieldType::Number, 'Copyright Year', advanced: true),

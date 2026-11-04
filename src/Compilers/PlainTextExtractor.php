@@ -254,7 +254,12 @@ class PlainTextExtractor
         $address = (string) $slot->get('address', '');
         $unsubscribeUrl = (string) $slot->get('unsubscribe_url', '{{unsubscribe_url}}');
 
+        $warning = (string) $slot->get('warning', '');
+
         $lines = ['(C) '.date('Y')." {$company}."];
+        if ($warning !== '') {
+            $lines[] = $warning;
+        }
         if ($address !== '') {
             $lines[] = $address;
         }
