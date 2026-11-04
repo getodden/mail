@@ -7,6 +7,7 @@ namespace Odden\MailBuilder\Tests\Unit;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\UnscrubbableHtmlException;
 use Odden\MailBuilder\MailBuilder;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
 use Odden\MailBuilder\Tests\TestCase;
@@ -109,6 +110,51 @@ class OutputScrubTest extends TestCase
         $this->assertSame('<form action="#">', HtmlUrlScrubber::scrub('<form action="javascript:alert(1)">'));
         $this->assertSame('<button formaction="#">', HtmlUrlScrubber::scrub('<button formaction=javascript:alert(1)>'));
         $this->assertSame('<video poster="#">', HtmlUrlScrubber::scrub('<video poster="javascript:alert(1)">'));
+    }
+
+    public function test_a_tag_with_thousands_of_attributes_is_still_scrubbed(): void
+    {
+        $attributes = implode(' ', array_map(fn (int $i): string => "a{$i}=b", range(0, 11_999)));
+
+        $html = HtmlUrlScrubber::scrub("<p {$attributes}>hi</p><a href=\"javascript:alert(1)\">x</a>");
+
+        $this->assertNoScript($html);
+        $this->assertStringContainsString('<a href="#">x</a>', $html);
+    }
+
+    public function test_the_scrubber_fails_closed_when_pcre_gives_up(): void
+    {
+        $limit = (string) ini_get('pcre.backtrack_limit');
+        ini_set('pcre.backtrack_limit', '5');
+
+        try {
+            $this->expectException(UnscrubbableHtmlException::class);
+
+            HtmlUrlScrubber::scrub('<a href="javascript:alert(1)" class="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">x</a>');
+        } finally {
+            ini_set('pcre.backtrack_limit', $limit);
+        }
+    }
+
+    public function test_xlink_href_and_object_data_are_scrubbed(): void
+    {
+        $this->assertSame('<a xlink:href="#">', HtmlUrlScrubber::scrub('<a xlink:href="javascript:alert(1)">'));
+        $this->assertSame('<use XLINK:HREF="#">', HtmlUrlScrubber::scrub("<use XLINK:HREF='javascript:alert(1)'>"));
+        $this->assertSame('<object data="#">', HtmlUrlScrubber::scrub('<object data="javascript:alert(1)">'));
+        $this->assertSame('<object data="https://example.test/a.swf">', HtmlUrlScrubber::scrub('<object data="https://example.test/a.swf">'));
+    }
+
+    public function test_srcset_is_always_dropped(): void
+    {
+        $this->assertSame('<img src="https://example.test/a.png" >', HtmlUrlScrubber::scrub('<img src="https://example.test/a.png" srcset="javascript:alert(1) 1x, https://example.test/b.png 2x">'));
+        $this->assertSame('<img  alt="x">', HtmlUrlScrubber::scrub("<img srcset='https://example.test/b.png 2x' alt=\"x\">"));
+    }
+
+    public function test_animation_values_with_an_unsafe_url_are_dropped(): void
+    {
+        $this->assertSame('<animate attributeName="href" >', HtmlUrlScrubber::scrub('<animate attributeName="href" values="https://example.test/a;javascript:alert(1)">'));
+        $this->assertSame('<animate values="0;1;0.5">', HtmlUrlScrubber::scrub('<animate values="0;1;0.5">'));
+        $this->assertSame('<animate values="https://example.test/a;#b">', HtmlUrlScrubber::scrub('<animate values="https://example.test/a;#b">'));
     }
 
     /**
