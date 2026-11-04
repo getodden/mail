@@ -7,6 +7,7 @@ namespace Odden\MailBuilder\Tests\Unit;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Mail\TemplateMailable;
 use Odden\MailBuilder\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class TemplateMailableTest extends TestCase
 {
@@ -82,5 +83,47 @@ class TemplateMailableTest extends TestCase
         $this->assertNotEmpty($headers->text);
         $this->assertSame('List-Unsubscribe=One-Click', $headers->text['List-Unsubscribe-Post']);
         $this->assertSame('<https://focal.test/unsubscribe/user123>', $headers->text['List-Unsubscribe']);
+    }
+
+    /**
+     * @return array<string, array{string, array<string, string>}>
+     */
+    public static function unsafeInterpolations(): array
+    {
+        return [
+            'context value' => ['{{link}}', ['link' => 'javascript:alert(1)']],
+            'default filter' => ['{{x|default(javascript:alert(1))}}', ['name' => 'a']],
+            'mixed case context value' => ['{{link}}', ['link' => 'JaVaScRiPt:alert(1)']],
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $data
+     */
+    #[DataProvider('unsafeInterpolations')]
+    public function test_a_url_that_only_becomes_unsafe_after_interpolation_is_scrubbed(string $url, array $data): void
+    {
+        $mailable = new TemplateMailable(
+            template: [['type' => SlotType::Event->value, 'data' => ['title' => 'Party', 'date' => 'Soon', 'button_text' => 'RSVP', 'button_url' => $url]]],
+            data: $data,
+        );
+
+        $this->assertDoesNotMatchRegularExpression('/javascript:/i', $mailable->compiledHtml);
+        $this->assertStringContainsString('<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="#"', $mailable->compiledHtml);
+        $this->assertStringContainsString('<a href="#" style=', $mailable->compiledHtml);
+    }
+
+    public function test_a_string_template_is_scrubbed_after_interpolation(): void
+    {
+        $mailable = new TemplateMailable(template: '<p><a href="{{link}}">go</a></p>', data: ['link' => 'javascript:alert(1)']);
+
+        $this->assertSame('<p><a href="#">go</a></p>', $mailable->compiledHtml);
+    }
+
+    public function test_a_safe_interpolated_url_is_left_alone(): void
+    {
+        $mailable = new TemplateMailable(template: '<p><a href="{{link}}">go</a></p>', data: ['link' => 'https://example.test/a?b=1']);
+
+        $this->assertSame('<p><a href="https://example.test/a?b=1">go</a></p>', $mailable->compiledHtml);
     }
 }
