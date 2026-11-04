@@ -6,6 +6,7 @@ namespace Odden\MailBuilder\Tests\Feature;
 
 use Illuminate\Support\Facades\Http;
 use Odden\MailBuilder\Data\EmailDocument;
+use Odden\MailBuilder\Editor\PreviewRenderer;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\MailBuilder;
 use Odden\MailBuilder\Tests\TestCase;
@@ -64,5 +65,34 @@ class DynamicFeedRuntimeTest extends TestCase
 
         $this->assertStringContainsString('Fallback Section', $html);
         $this->assertStringContainsString('Fallback Default Item', $html);
+    }
+
+    public function test_the_editor_preview_does_not_fetch_feeds(): void
+    {
+        Http::fake(['*' => Http::response(['items' => [['title' => 'Remote Item']]], 200)]);
+
+        $slots = [
+            ['type' => 'dynamic_feed', 'data' => ['feed_url' => 'https://api.example.com/feed', 'items' => [['title' => 'Static Item']]]],
+            ['type' => 'rss_feed', 'data' => ['feed_url' => 'https://api.example.com/rss', 'items' => [['title' => 'Static Rss']]]],
+        ];
+
+        $html = app(PreviewRenderer::class)->render(['slots' => $slots]);
+
+        Http::assertNothingSent();
+        $this->assertStringContainsString('Static Item', $html);
+        $this->assertStringNotContainsString('Remote Item', $html);
+    }
+
+    public function test_a_normal_compile_still_fetches_feeds(): void
+    {
+        Http::fake(['*' => Http::response(['items' => [['title' => 'Remote Item']]], 200)]);
+
+        $doc = new EmailDocument;
+        $doc->append(SlotType::DynamicFeed, ['feed_url' => 'https://api.example.com/feed', 'items' => [['title' => 'Static Item']]]);
+
+        $html = MailBuilder::compile($doc);
+
+        Http::assertSentCount(1);
+        $this->assertStringContainsString('Remote Item', $html);
     }
 }

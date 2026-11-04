@@ -41,6 +41,6 @@ final class PreviewRenderer
             'theme' => ['nullable', 'array'],
         ])->validate();
 
-        return $this->compiler->compileDocument(EmailDocument::fromArray($data), ['editor_markers' => true]);
+        return $this->compiler->compileDocument(EmailDocument::fromArray($data), ['editor_markers' => true, 'fetch_feeds' => false]);
     }
 }

@@ -62,7 +62,7 @@ class EmailSlotCompiler
                 continue;
             }
 
-            $compiled = $this->compileSlot($slot, $theme);
+            $compiled = $this->compileSlot($slot, $theme, ['fetch_feeds' => $options['fetch_feeds'] ?? true]);
 
             // The drag-and-drop editor finds each slot in the preview by this marker. Never set it for a real send.
             $slotsHtml .= $editorMarkers ? '<div data-odden-slot="'.$index.'">'.$compiled.'</div>' : $compiled;
@@ -143,8 +143,9 @@ class EmailSlotCompiler
      * Render an individual slot to HTML.
      *
      * @param  array<string, mixed>  $theme
+     * @param  array<string, mixed>  $options
      */
-    public function compileSlot(EmailSlot $slot, array $theme = []): string
+    public function compileSlot(EmailSlot $slot, array $theme = [], array $options = []): string
     {
         $viewName = $slot->viewName();
 
@@ -155,7 +156,9 @@ class EmailSlotCompiler
         $data = $slot->data;
 
         // If slot has a remote feed URL, attempt runtime hydration
-        if (($slot->type === SlotType::DynamicFeed || $slot->type === SlotType::RssFeed) && ! empty($data['feed_url'])) {
+        $fetchFeeds = (bool) ($options['fetch_feeds'] ?? true);
+
+        if ($fetchFeeds && ($slot->type === SlotType::DynamicFeed || $slot->type === SlotType::RssFeed) && ! empty($data['feed_url'])) {
             $data = $this->hydrateFeedSlot($data);
             $slot = new EmailSlot(
                 type: $slot->type,
