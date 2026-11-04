@@ -99,6 +99,17 @@ final class SlotSchemaRegistry
         };
     }
 
+    public static function forKey(string $key): ?SlotSchema
+    {
+        $builtIn = SlotType::tryFrom($key);
+
+        if ($builtIn !== null) {
+            return self::has($builtIn) ? self::for($builtIn) : null;
+        }
+
+        return app(SlotRegistry::class)->get($key)?->schema();
+    }
+
     /**
      * @return array<int, SlotSchema>
      */
@@ -122,10 +133,16 @@ final class SlotSchemaRegistry
             $labels[$type->value] = $type->label();
         }
 
+        $custom = app(SlotRegistry::class)->all();
+
+        foreach ($custom as $type) {
+            $labels[$type->key()] = $type->label();
+        }
+
         return [
             'version' => self::VERSION,
             'groups' => array_map(fn (SlotGroup $group): array => ['key' => $group->value, 'label' => $group->label()], SlotGroup::cases()),
-            'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), self::all()),
+            'slots' => array_map(fn (SlotSchema $schema): array => $schema->toArray(), [...self::all(), ...array_map(fn (CustomSlotType $type): SlotSchema => $type->schema(), $custom)]),
             'labels' => $labels,
         ];
     }

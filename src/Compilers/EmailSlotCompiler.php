@@ -137,7 +137,7 @@ class EmailSlotCompiler
      */
     public function compileSlot(EmailSlot $slot, array $theme = []): string
     {
-        $viewName = $slot->type->viewName();
+        $viewName = $slot->viewName();
 
         if (! $this->view->exists($viewName)) {
             return '';

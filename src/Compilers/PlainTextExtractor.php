@@ -7,6 +7,7 @@ namespace Odden\MailBuilder\Compilers;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\ProvidesPlainText;
 
 class PlainTextExtractor
 {
@@ -38,6 +39,12 @@ class PlainTextExtractor
      */
     public function extractFromSlot(EmailSlot $slot): string
     {
+        if (! $slot->type instanceof SlotType) {
+            return $slot->type instanceof ProvidesPlainText
+                ? $slot->type->plainText($slot->data)
+                : $this->extractFromHtml(app(EmailSlotCompiler::class)->compileSlot($slot));
+        }
+
         return match ($slot->type) {
             SlotType::Header => $this->extractHeader($slot),
             SlotType::Hero => $this->extractHero($slot),

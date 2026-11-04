@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\SlotRegistry;
 
 /**
  * Renders the editor's preview: validates a document the browser sent, and compiles it with a marker on each slot.
@@ -32,7 +33,7 @@ final class PreviewRenderer
         $data = Validator::make($payload, [
             'slots' => ['present', 'array', 'max:'.(int) config('mail-builder.editor.max_slots', 200)],
             'slots.*' => ['array'],
-            'slots.*.type' => ['required', 'string', Rule::in(array_map(fn (SlotType $type): string => $type->value, SlotType::cases()))],
+            'slots.*.type' => ['required', 'string', Rule::in([...array_map(fn (SlotType $type): string => $type->value, SlotType::cases()), ...app(SlotRegistry::class)->keys()])],
             'slots.*.data' => ['nullable', 'array'],
             'slots.*.visibility' => ['nullable', 'array'],
             'subject' => ['nullable', 'string', 'max:255'],

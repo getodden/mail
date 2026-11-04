@@ -37,7 +37,7 @@ final class SchemaBlockFactory
     {
         $components = array_map(fn (SlotField $field): Field => self::field($field), $schema->basicFields());
 
-        $block = Block::make($schema->type->value)
+        $block = Block::make($schema->key())
             ->label($schema->label())
             ->icon(self::icon($schema->icon));
 

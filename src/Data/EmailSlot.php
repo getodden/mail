@@ -7,6 +7,8 @@ namespace Odden\MailBuilder\Data;
 use Illuminate\Support\Arr;
 use InvalidArgumentException;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Schema\CustomSlotType;
+use Odden\MailBuilder\Schema\SlotRegistry;
 
 class EmailSlot
 {
@@ -15,7 +17,7 @@ class EmailSlot
      * @param  array<string, mixed>|null  $visibility
      */
     public function __construct(
-        public readonly SlotType $type,
+        public readonly SlotType|CustomSlotType $type,
         public readonly array $data = [],
         public readonly ?array $visibility = null,
     ) {}
@@ -33,7 +35,7 @@ class EmailSlot
             throw new InvalidArgumentException('Missing or invalid "type" in email slot payload.');
         }
 
-        $type = SlotType::tryFrom($rawType);
+        $type = SlotType::tryFrom($rawType) ?? app(SlotRegistry::class)->get($rawType);
 
         if ($type === null) {
             throw new InvalidArgumentException("Unsupported email slot type [{$rawType}].");
@@ -61,7 +63,7 @@ class EmailSlot
     public function toArray(): array
     {
         $arr = [
-            'type' => $this->type->value,
+            'type' => $this->key(),
             'data' => $this->data,
         ];
 
@@ -70,6 +72,16 @@ class EmailSlot
         }
 
         return $arr;
+    }
+
+    public function key(): string
+    {
+        return $this->type instanceof SlotType ? $this->type->value : $this->type->key();
+    }
+
+    public function viewName(): string
+    {
+        return $this->type instanceof SlotType ? $this->type->viewName() : $this->type->view();
     }
 
     /**
