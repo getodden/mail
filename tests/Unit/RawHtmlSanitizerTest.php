@@ -207,26 +207,27 @@ class RawHtmlSanitizerTest extends TestCase
 
     public function test_a_large_document_is_not_truncated(): void
     {
-        $html = str_repeat('<p>paragraph of normal text</p>', 5000);
+        $html = str_repeat('<p>paragraph of normal text</p>', 3000);
 
-        $this->assertSame(5000, substr_count($this->compileSlot('body_text', 'content', $html), '</p>'));
+        $this->assertSame(3000, substr_count($this->compileSlot('body_text', 'content', $html), '</p>'));
     }
 
-    public function test_a_body_text_of_half_a_megabyte_compiles_quickly(): void
+    public function test_a_body_text_just_under_the_cap_compiles_quickly(): void
     {
-        $html = str_repeat('<p style="color:#333">Hello <a href="https://example.com/a?b=1">link</a> {{ name }} and <strong>bold</strong> text.</p>', 4000);
-        $this->assertGreaterThan(450_000, strlen($html));
+        $html = str_repeat('<p style="color:#333">Hello <a href="https://example.com/a?b=1">link</a> {{ name }} and <strong>bold</strong> text.</p>', 750);
+        $this->assertGreaterThan(80_000, strlen($html));
+        $this->assertLessThan(100_000, strlen($html));
 
         $started = microtime(true);
         $output = $this->compileSlot('body_text', 'content', $html);
 
         $this->assertLessThan(1.0, microtime(true) - $started);
-        $this->assertSame(4000, substr_count($output, '{{ name }}'));
+        $this->assertSame(750, substr_count($output, '{{ name }}'));
     }
 
     public function test_unclosed_merge_tag_openers_compile_in_linear_time(): void
     {
-        $html = str_repeat('{{ ', 160_000).'}';
+        $html = str_repeat('{{ ', 30_000).'}';
 
         $started = microtime(true);
         $output = app(EmailSlotCompiler::class)->compileSlots([['type' => 'body_text', 'data' => ['content' => $html]]]);

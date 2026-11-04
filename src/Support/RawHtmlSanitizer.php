@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Odden\MailBuilder\Support;
 
 use InvalidArgumentException;
+use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerAction;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
@@ -31,6 +32,8 @@ final class RawHtmlSanitizer
 
     private const MEDIA_SCHEMES = ['http', 'https', 'cid'];
 
+    public const DEFAULT_MAX_BYTES = 100000;
+
     public const PROFILE_HTML = 'html';
 
     public const PROFILE_RICH = 'rich';
@@ -47,18 +50,31 @@ final class RawHtmlSanitizer
             return '';
         }
 
+        $limit = self::maxBytes();
+
+        if (strlen($html) > $limit) {
+            throw RawHtmlTooLargeException::exceeding(strlen($html), $limit);
+        }
+
         $html = $rich ? (string) preg_replace(self::TABLE_TAG, '', $html) : BlockMergeTags::strip($html);
 
         [$protected, $mergeTags] = MergeTagGuard::protect($html);
-        $sanitized = MergeTagGuard::restoreInMarkup(self::sanitizer($mergeTags, $rich)->sanitize($protected), $mergeTags);
+        $sanitized = MergeTagGuard::restoreInMarkup(self::sanitizer($mergeTags, $rich, strlen($protected))->sanitize($protected), $mergeTags);
 
         return $rich ? $sanitized : BlockMergeTags::strip($sanitized);
+    }
+
+    public static function maxBytes(): int
+    {
+        $configured = PackageConfig::get('mail-builder.raw_html_max_bytes', self::DEFAULT_MAX_BYTES);
+
+        return is_numeric($configured) ? max(1, (int) $configured) : self::DEFAULT_MAX_BYTES;
     }
 
     /**
      * @param  array<string, string>  $mergeTags
      */
-    private static function sanitizer(array $mergeTags, bool $rich): HtmlSanitizer
+    private static function sanitizer(array $mergeTags, bool $rich, int $inputLength): HtmlSanitizer
     {
         $config = (new HtmlSanitizerConfig)
             ->defaultAction(HtmlSanitizerAction::Drop)
@@ -66,7 +82,7 @@ final class RawHtmlSanitizer
             ->allowMediaSchemes(self::MEDIA_SCHEMES)
             ->allowRelativeLinks()
             ->allowRelativeMedias()
-            ->withMaxInputLength(-1)
+            ->withMaxInputLength(max(self::maxBytes(), $inputLength))
             ->withAttributeSanitizer(new StyleAttributeSanitizer($mergeTags));
 
         foreach ([...self::ELEMENTS, ...($rich ? [] : self::TABLE_ELEMENTS)] as $element) {

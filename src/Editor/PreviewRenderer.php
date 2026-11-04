@@ -10,7 +10,9 @@ use Illuminate\Validation\ValidationException;
 use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Enums\SlotType;
+use Odden\MailBuilder\Exceptions\RawHtmlTooLargeException;
 use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 /**
  * Renders the editor's preview: validates a document the browser sent, and compiles it with a marker on each slot.
@@ -41,6 +43,25 @@ final class PreviewRenderer
             'theme' => ['nullable', 'array'],
         ])->validate();
 
-        return $this->compiler->compileDocument(EmailDocument::fromArray($data), ['editor_markers' => true, 'fetch_feeds' => false]);
+        $document = EmailDocument::fromArray($data);
+
+        try {
+            return $this->compiler->compileDocument($document, ['editor_markers' => true, 'fetch_feeds' => false]);
+        } catch (RawHtmlTooLargeException $exception) {
+            throw ValidationException::withMessages([$this->offendingSlot($document) => [$exception->getMessage()]]);
+        }
+    }
+
+    private function offendingSlot(EmailDocument $document): string
+    {
+        foreach ($document->slots as $index => $slot) {
+            try {
+                SlotDataSanitizer::slot($slot);
+            } catch (RawHtmlTooLargeException) {
+                return "slots.{$index}.data";
+            }
+        }
+
+        return 'slots';
     }
 }
