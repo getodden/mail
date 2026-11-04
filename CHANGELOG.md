@@ -2,7 +2,7 @@
 
 All notable changes to `getodden/mail` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - Unreleased - 2026-11-04
+## [3.0.0] - 2026-11-04
 
 Version 3.0.0 is a major release because it changes what the compiler keeps from raw HTML and rich text, rejects some merge tag structures that 2.x rendered, and changes public types. If you only compile slots you built yourself, most emails render the same. If tenant users paste HTML, write `{% if %}` blocks in text fields, or you subclass the compiler, read [Upgrade notes](#upgrade-notes) first.
 

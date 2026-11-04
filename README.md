@@ -396,6 +396,68 @@ The field's theme wins over a theme sent by the browser.
 
 ---
 
+## Custom Slot Types
+
+Register your own slot type with the `SlotRegistry` singleton. A registered slot compiles, exports, validates, previews, appears in `SlotSchemaRegistry::toArray()`, and gets a block in the Filament `EmailSlotBuilder`.
+
+```php
+use Odden\MailBuilder\Enums\SlotGroup;
+use Odden\MailBuilder\Schema\CustomSlotType;
+use Odden\MailBuilder\Schema\FieldType;
+use Odden\MailBuilder\Schema\SlotField;
+use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Schema\SlotSchema;
+
+final class SpotlightSlot implements CustomSlotType
+{
+    public function key(): string
+    {
+        return 'spotlight';
+    }
+
+    public function label(): string
+    {
+        return 'Product Spotlight';
+    }
+
+    public function shortLabel(): string
+    {
+        return 'Spotlight';
+    }
+
+    public function description(): string
+    {
+        return 'Highlights one product.';
+    }
+
+    public function group(): SlotGroup
+    {
+        return SlotGroup::Commerce;
+    }
+
+    public function view(): string
+    {
+        return 'emails.slots.spotlight';
+    }
+
+    public function schema(): SlotSchema
+    {
+        return new SlotSchema($this, 'star', [
+            new SlotField('headline', FieldType::Text, 'Headline', required: true),
+            new SlotField('blurb', FieldType::RichText, 'Blurb'),
+        ]);
+    }
+}
+
+app(SlotRegistry::class)->register(new SpotlightSlot);
+```
+
+- **Keys.** A key matches `/^[a-z][a-z0-9_]*$/`, cannot collide with a built-in slot type, and can be registered once. The schema must be built for the same key. `register()` throws `InvalidArgumentException` otherwise.
+- **Registry methods.** `register()`, `get()`, `has()`, `keys()`, `all()` and `flush()`.
+- **Unescaped fields.** A view that prints a field unescaped must declare the field `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`, so the value goes through `RawHtmlSanitizer`.
+- **Plain text.** Implement `Odden\MailBuilder\Schema\ProvidesPlainText` and its `plainText(array $data): string` method to control the slot's plain-text output. Without it, the plain-text fallback extracts text from the compiled HTML.
+- **Lookups.** `SlotSchemaRegistry::forKey($key)` returns the schema for a built-in or custom key. `EmailSlot::fromArray()` resolves a custom key through the registry.
+
 ## Security
 
 Tenant users can author what this package renders, so untrusted input is sanitized in three places. None of it relies on the author's markup being well formed.
@@ -406,7 +468,7 @@ Tenant users can author what this package renders, so untrusted input is sanitiz
 
 The rules:
 
-- **URL and image fields.** A value that starts with a URI scheme must be one of the schemes in `mail-builder.url_schemes`. The default list is `http`, `https`, `mailto`, `tel`, `sms`, `webcal`, `webcals`, `whatsapp`, `skype`, `geo`, `itms` and `itms-apps`. Add your own app scheme to the list, and the raw HTML sanitizer keeps links with it too. Image fields allow only `http`, `https`, `cid` and `data:image/png|jpeg|jpg|gif|webp|avif|bmp;base64,`, never SVG, whatever the list says. Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs, `{{merge_tags}}` and a host with a port such as `example.com:8080/x` or `localhost:8000/x` pass unchanged. Nested `items` fields are checked too.
+- **URL and image fields.** A value that starts with a URI scheme must be one of the schemes in `mail-builder.url_schemes`. The default list is `http`, `https`, `mailto`, `tel`, `sms`, `webcal`, `webcals`, `whatsapp`, `skype`, `geo`, `itms` and `itms-apps`. Add your own app scheme to the list, and the raw HTML sanitizer keeps links with it too. Image fields allow only `http`, `https`, `mailto`, `tel`, `cid` and `data:image/png|jpeg|jpg|gif|webp|avif|bmp;base64,`, never SVG, whatever the list says. Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs, `{{merge_tags}}` and a host with a port such as `example.com:8080/x` or `localhost:8000/x` pass unchanged. Nested `items` fields are checked too.
 - **Color fields.** Only hex colors, `rgb()`, `rgba()`, `hsl()`, `hsla()` (letters such as `120deg` are allowed inside the parentheses) and plain color keywords are accepted. Any other value is dropped so the view's default applies, which stops a color from injecting extra CSS declarations. An empty color is dropped too, so it falls back to the default instead of rendering as blank. Theme values whose key ends in `_color` are checked the same way.
 - **Number and select fields.** A number field is cast to an int or float and a non-numeric value is dropped. A select value must be one of the field's options, otherwise it is dropped. A list field that is not an array is dropped.
 - **Raw HTML.** The `body_text` and `html` slots print author HTML. Every field the schema marks as rich text, and the `html` slot's code field, goes through `RawHtmlSanitizer`, an allowlist sanitizer built on `symfony/html-sanitizer` (`^7.2 || ^8.0`). It parses the markup the way a browser does and writes it back out, so an unbalanced quote cannot hide a link from it. A custom slot that prints a field unescaped should declare it as `FieldType::RichText`, or pass `rawHtml: true` to its `SlotField`.
@@ -418,7 +480,7 @@ The rules:
   - **Links and images.** A link keeps only a scheme from `mail-builder.url_schemes`. An image keeps only `http`, `https`, `cid`, a relative path, or a base64 `data:image/png`, `jpeg`, `jpg`, `gif` or `webp` value, so an image pasted into the editor still embeds. Other `data:` URIs, SVG included, are dropped. The `background` attribute on `table` and `td` keeps only an `http` or `https` address. A relative link is kept.
   - **Styles.** A `style` attribute is kept, but every declaration that contains `expression(`, `javascript:`, `behavior`, `-moz-binding`, `@import`, `image-set(` (or `image(`, `src(`, `element(`, `paint(`, `cross-fade(`), a backslash escape or a comment is removed. So is every `url(` with two exceptions: `background` and `background-image` may hold one `url()` whose address is a single `http://` or `https://` literal, written bare or in single or double quotes, with no whitespace, escape, comment, parenthesis or merge tag inside it (`background:#000 url(https://cdn.example.com/hero.jpg) no-repeat` works). `<style>` elements are removed, so raw slots cannot carry a stylesheet.
   - **Merge tags.** In text, `{{ tag | filter }}` passes through byte for byte. Inside a tag's markup, such as `href`, `src` or `style`, a `{{ }}` tag is kept only when it matches `{{ path | filter }}`: a dotted path of letters, digits, `_` and `.`, then any number of filters, each with at most one argument that is a bare word (`[A-Za-z0-9_.-]`) or a quoted string without quotes, `<`, `>`, `&`, backslash or line breaks. A double-quoted argument is rewritten with single quotes. A tag that does not match is dropped, a `{% %}` tag is always dropped, and stray braces in a tag are dropped, so a tag cannot close an attribute or open another one. Quotes inside a kept tag are not turned into entities, so `<a href="{{ prefs_url | default('https://example.com/prefs') }}">` comes out as written. Whatever a tag resolves to is checked by the send layer.
-  - **Block merge tags.** The interpolator evaluates `{% if %}...{% endif %}` by deleting text, even across tags, and an HTML parser moves text out of tables. So the `html` profile does not support block merge tags. Every `{% ... %}` tag and every Handlebars style `{{#if}}`, `{{#each}}`, `{{#unless}}`, `{{else}}` and `{{/if}}` tag is removed together with everything it wraps (`if`, `for`, `unless`, `each`, `with`), and an unbalanced block tag is removed alone, so content meant for one audience is never shown to another. Variable tags still work. To show content to part of the audience, use the slot's visibility rules. For a list of items, use the `order_receipt` slot. The `rich` profile keeps `{% if %}` blocks in text, and removes table tags first so a block that wraps a table row still wraps its text.
+  - **Block merge tags.** The interpolator evaluates `{% if %}...{% endif %}` by deleting text, even across tags, and an HTML parser moves text out of tables. So the `html` profile does not support block merge tags. Every `{% ... %}` tag and every Handlebars style `{{#if}}`, `{{#each}}`, `{{#unless}}`, `{{else}}` and `{{/if}}` tag is removed together with everything it wraps (`if`, `for`, `unless`, `each`, `with`, `block`, `macro`, `filter`, `call`, `raw`, `autoescape` and `spaceless`), and an unbalanced block tag is removed alone, so content meant for one audience is never shown to another. Variable tags still work. To show content to part of the audience, use the slot's visibility rules. For a list of items, use the `order_receipt` slot. The `rich` profile keeps `{% if %}` blocks in text, and removes table tags first so a block that wraps a table row still wraps its text.
   - **Block merge tags elsewhere.** Every text, textarea, tags and rich text field, in nested `items` too, and the email's subject and preview text, must have balanced block tags that are not nested. A block is `{% if %}`, `{% for %}`, `{% unless %}`, `{% each %}` or `{% with %}` and their `{{#if}}`, `{{#each}}`, `{{#unless}}` forms, with an optional `{% else %}` or `{{else}}`. An opener with no closer, a closer or else with no block, a closer for another kind of block, a block inside another block, or any other `{% %}` tag, throws `Odden\MailBuilder\Exceptions\InvalidMergeTagStructureException` (an `InvalidArgumentException` with the field key and the problem codes `unbalanced_opener`, `unbalanced_closer`, `mismatched_closer`, `nested_block` and `unknown_block_tag`) and the content is never rendered. The editor preview turns it into a validation error on `slots.{index}.data.{field}` (`subject` or `preview_text` for those), with a message in plain English such as "A block tag such as {% if %} is never closed" or "Block tags cannot be nested inside each other". The rich text value is checked as written and again after sanitizing. `BlockMergeTags::validate($text)` returns the codes for your own forms.
   - **Conditionals fail closed.** The interpolator reads `{% if key %}`, `{% else %}` and `{% endif %}` with a stack, not a pattern, so balanced nesting evaluates correctly even though authoring rejects it. Anything malformed hides content instead of showing it. An `{% if %}` that is never closed hides everything from its tag to the end of the text, a block with two `{% else %}` tags is hidden, a stray `{% else %}` or `{% endif %}` is dropped, and a condition that is not a plain context key (`{% if a == b %}`) is false. Tags are matched without regard to case.
   - **Document size cap.** The slots of one email may add up to `mail-builder.max_document_bytes` (default 1500000 bytes) of HTML. `EmailSlotCompiler::compileDocument` throws `Odden\MailBuilder\Exceptions\DocumentTooLargeException`, an `InvalidArgumentException`, as soon as the slots pass it and before CSS is inlined, so a pile of near-cap fields cannot exhaust memory. The editor preview turns it into a validation error on `slots`.
@@ -453,7 +515,7 @@ What stays with the host app:
 
 ## Upgrading from 2.x
 
-Version 3.0.0 changes what the compiler keeps from raw HTML and rich text, tightens merge tag rules, and adds a required `symfony/html-sanitizer` dependency. Read the upgrade checklist in [CHANGELOG.md](CHANGELOG.md#300---unreleased---2026-11-04) before you update.
+Version 3.0.0 changes what the compiler keeps from raw HTML and rich text, tightens merge tag rules, and adds a required `symfony/html-sanitizer` dependency. Read the upgrade checklist in [CHANGELOG.md](CHANGELOG.md#300---2026-11-04) before you update.
 
 ## Testing
 
