@@ -8,7 +8,9 @@ use Odden\MailBuilder\Data\EmailDocument;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Support\HtmlUrlScrubber;
+use Odden\MailBuilder\Support\RawHtmlSanitizer;
 use Odden\MailBuilder\Support\SafeColor;
+use Odden\MailBuilder\Support\SlotDataSanitizer;
 
 class AmpEmailCompiler
 {
@@ -33,6 +35,8 @@ class AmpEmailCompiler
         $requiresAccordion = false;
 
         foreach ($document->slots as $slot) {
+            $slot = SlotDataSanitizer::slot($slot);
+
             if ($slot->type === SlotType::Accordion) {
                 $requiresAccordion = true;
                 $bodyParts[] = $this->compileAmpAccordion($slot, $primaryColor);
@@ -138,7 +142,7 @@ HTML;
 
     protected function compileAmpGeneralSlot(EmailSlot $slot): string
     {
-        $content = (string) $slot->get('content', '');
+        $content = RawHtmlSanitizer::sanitize((string) $slot->get('content', ''));
         if ($content !== '') {
             return "<div class=\"amp-card\">{$content}</div>";
         }
