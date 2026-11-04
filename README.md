@@ -391,7 +391,7 @@ The field's theme wins over a theme sent by the browser.
 
 The compiler sanitizes slot data from each slot's schema before a view renders, for built-in and custom slots alike.
 
-- **URL and image fields.** A value that starts with a URI scheme must be `http`, `https`, `mailto` or `tel` (plus `cid` and `data:image/png|jpeg|jpg|gif|webp;base64,` for image fields). Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs and `{{merge_tags}}` pass unchanged. Nested `items` fields are checked too.
+- **URL and image fields.** A value that starts with a URI scheme must be `http`, `https`, `mailto`, `tel`, `sms`, `webcal` or `webcals` (image fields allow `http`, `https`, `cid` and `data:image/png|jpeg|jpg|gif|webp|avif|bmp;base64,`, never SVG). Anything else, such as `javascript:`, `vbscript:` or `data:text/html`, becomes `#` (an empty string for images). Relative paths, fragments, protocol-relative URLs, `{{merge_tags}}` and a host with a port such as `example.com:8080/x` pass unchanged. Nested `items` fields are checked too.
 - **Color fields.** Only hex colors, `rgb()`, `rgba()`, `hsl()`, `hsla()` and plain color keywords are accepted. Any other value is dropped so the view's default applies, which stops a color from injecting extra CSS declarations.
 - **Raw content.** The `html` slot and text fields are not rewritten. Text is escaped by the views.
 - **Preview iframe.** When a host app shows the compiled HTML in an iframe, sandbox it without `allow-same-origin`.

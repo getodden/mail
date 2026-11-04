@@ -104,6 +104,10 @@ class InputHardeningTest extends TestCase
             'anchor' => ['#anchor'],
             'protocol relative' => ['//cdn.example.test/a.png'],
             'empty' => [''],
+            'host and port' => ['example.com:8080/x'],
+            'host and bare port' => ['example.com:8080'],
+            'host and port query' => ['sub.example.com:443?a=1'],
+            'host and port hash' => ['example.com:8080#top'],
         ];
     }
 
@@ -135,6 +139,29 @@ class InputHardeningTest extends TestCase
         $this->assertSame('cid:logo', SafeUrl::for('cid:logo', true));
         $this->assertSame('#', SafeUrl::for('cid:logo'));
         $this->assertSame('', SafeUrl::for('javascript:alert(1)', true));
+    }
+
+    public function test_sms_and_webcal_links_are_allowed(): void
+    {
+        foreach (['sms:+15551234567', 'webcal://example.test/cal.ics', 'webcals://example.test/cal.ics'] as $url) {
+            $this->assertSame($url, SafeUrl::for($url));
+        }
+    }
+
+    public function test_a_scheme_that_only_looks_like_a_host_port_is_still_refused(): void
+    {
+        $this->assertSame('#', SafeUrl::for('javascript:8080/x'));
+        $this->assertSame('#', SafeUrl::for('example.com:8080x'));
+        $this->assertSame('#', SafeUrl::for('example.com:alert(1)'));
+    }
+
+    public function test_more_raster_data_images_are_allowed_but_never_svg(): void
+    {
+        foreach (['png', 'jpeg', 'gif', 'webp', 'avif', 'bmp'] as $type) {
+            $this->assertSame("data:image/$type;base64,AAAA", SafeUrl::for("data:image/$type;base64,AAAA", true));
+        }
+
+        $this->assertSame('', SafeUrl::for('data:image/svg+xml;base64,AAAA', true));
     }
 
     public function test_an_injected_color_is_dropped_so_the_default_applies(): void
