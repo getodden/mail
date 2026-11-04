@@ -179,7 +179,11 @@ class EmailSlotCompiler
      */
     protected function fieldsFor(string $key): array
     {
-        return $this->fieldsByKey[$key] ??= array_values(SlotSchemaRegistry::forKey($key)->fields ?? []);
+        if (SlotType::tryFrom($key) === null) {
+            return array_values(SlotSchemaRegistry::forKey($key)?->fields ?? []);
+        }
+
+        return $this->fieldsByKey[$key] ??= array_values(SlotSchemaRegistry::forKey($key)?->fields ?? []);
     }
 
     /**

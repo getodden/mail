@@ -8,7 +8,9 @@ use Odden\MailBuilder\Compilers\EmailSlotCompiler;
 use Odden\MailBuilder\Data\EmailSlot;
 use Odden\MailBuilder\Enums\SlotType;
 use Odden\MailBuilder\Schema\FieldType;
+use Odden\MailBuilder\Schema\SlotField;
 use Odden\MailBuilder\Schema\SlotRegistry;
+use Odden\MailBuilder\Schema\SlotSchema;
 use Odden\MailBuilder\Schema\SlotSchemaRegistry;
 use Odden\MailBuilder\Support\SafeColor;
 use Odden\MailBuilder\Support\SafeUrl;
@@ -89,6 +91,49 @@ class InputHardeningTest extends TestCase
         $this->assertStringContainsString('href="#"', $html);
         $this->assertStringNotContainsString('javascript:', $html);
         $this->assertStringContainsString('color: #111111;', $html);
+    }
+
+    public function test_a_custom_slot_registered_after_first_use_is_sanitized_with_its_schema(): void
+    {
+        $this->app['view']->addNamespace('test-slots', __DIR__.'/../views');
+        app(SlotRegistry::class)->flush();
+        $compiler = app(EmailSlotCompiler::class);
+        $data = ['accent' => 'red;background-image:url(https://x/t)'];
+
+        $before = $compiler->compileSlot(new EmailSlot(new LinkSlot, $data));
+        app(SlotRegistry::class)->register(new LinkSlot);
+        $after = $compiler->compileSlot(new EmailSlot(new LinkSlot, $data));
+        app(SlotRegistry::class)->flush();
+
+        $this->assertStringContainsString('background-image', $before);
+        $this->assertStringNotContainsString('background-image', $after);
+        $this->assertStringContainsString('color: #111111;', $after);
+    }
+
+    public function test_a_custom_slot_re_registered_with_a_new_schema_is_sanitized_with_the_current_one(): void
+    {
+        $this->app['view']->addNamespace('test-slots', __DIR__.'/../views');
+        app(SlotRegistry::class)->flush();
+        $compiler = app(EmailSlotCompiler::class);
+        $data = ['accent' => 'red;background-image:url(https://x/t)'];
+
+        $plain = new class extends LinkSlot
+        {
+            public function schema(): SlotSchema
+            {
+                return new SlotSchema($this, 'star', [new SlotField('accent', FieldType::Text, 'Accent')]);
+            }
+        };
+
+        app(SlotRegistry::class)->register($plain);
+        $before = $compiler->compileSlot(new EmailSlot($plain, $data));
+        app(SlotRegistry::class)->flush();
+        app(SlotRegistry::class)->register(new LinkSlot);
+        $after = $compiler->compileSlot(new EmailSlot(new LinkSlot, $data));
+        app(SlotRegistry::class)->flush();
+
+        $this->assertStringContainsString('background-image', $before);
+        $this->assertStringNotContainsString('background-image', $after);
     }
 
     /**
