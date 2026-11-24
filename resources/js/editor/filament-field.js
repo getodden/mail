@@ -12,13 +12,26 @@ function toList(state) {
     return state && typeof state === 'object' ? Object.values(state) : [];
 }
 
-export default function oddenMailEditorField({ state, key, schema, disabled }) {
+export default function oddenMailEditorField({ state, key, schema, disabled, strings, dir, lang }) {
     return {
         state,
         lastEmitted: null,
 
         init() {
             const editor = this.$refs.editor;
+
+            // Before the adapter: the editor draws its interface when the adapter arrives.
+            if (strings) {
+                editor.strings = strings;
+            }
+
+            if (dir) {
+                editor.dir = dir;
+            }
+
+            if (lang) {
+                editor.lang = lang;
+            }
 
             editor.adapter = {
                 loadSchema: async () => schema,

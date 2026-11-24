@@ -7,6 +7,8 @@
     $columnWidth = $perRow === 2 ? '48%' : '31%';
     $headingColor = $theme['heading_color'] ?? '#0f172a';
     $textColor = $theme['text_color'] ?? '#64748b';
+    $start = ($direction ?? 'ltr') === 'rtl' ? 'right' : 'left';
+    $end = $start === 'left' ? 'right' : 'left';
     $fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 @endphp
 
@@ -21,7 +23,7 @@
 
             @foreach($rows as $row)
                 <!--[if mso]>
-                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"{!! $start === 'right' ? ' dir="rtl"' : '' !!}>
                 <tr>
                 <![endif]-->
                 @foreach($row as $image)
@@ -32,7 +34,7 @@
                         $linkUrl = (string) ($image['link_url'] ?? '');
                     @endphp
                     <!--[if mso]><td width="{{ $cellWidth }}" valign="top" style="padding: 6px;"><![endif]-->
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $columnWidth }}" align="left" class="stack-column" style="max-width: {{ $cellWidth }}px; margin-bottom: 16px; margin-right: 2%;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $columnWidth }}" align="{{ $start }}" class="stack-column" style="max-width: {{ $cellWidth }}px; margin-bottom: 16px; margin-{{ $end }}: 2%;">
                         <tr>
                             <td style="font-family: {{ $fontFamily }};">
                                 @if($linkUrl !== '')

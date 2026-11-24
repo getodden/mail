@@ -20,17 +20,20 @@
     $headingColor = $theme['heading_color'] ?? '#0F172A';
     $textColor = $theme['text_color'] ?? '#475569';
     $borderColor = $theme['border_color'] ?? '#E2E8F0';
+    $rtl = ($direction ?? 'ltr') === 'rtl';
+    $start = $rtl ? 'right' : 'left';
+    $end = $rtl ? 'left' : 'right';
 @endphp
 
 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0;">
     <tr>
         <td style="padding: 0;">
             <!--[if mso]>
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"{!! $rtl ? ' dir="rtl"' : '' !!}>
             <tr>
-            <td width="{{ $msoLeftWidth }}" valign="top" style="padding-right: 12px;">
+            <td width="{{ $msoLeftWidth }}" valign="top" style="padding-{{ $end }}: 12px;">
             <![endif]-->
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $leftWidth }}" align="left" class="stack-column" style="margin-bottom: 16px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $leftWidth }}" align="{{ $start }}" class="stack-column" style="margin-bottom: 16px;">
                 <tr>
                     <td style="padding: 20px; background-color: {{ $leftBg }}; border: 1px solid {{ $borderColor }}; border-radius: 8px;">
                         @if($leftImage !== '')
@@ -49,9 +52,9 @@
             </table>
             <!--[if mso]>
             </td>
-            <td width="{{ $msoRightWidth }}" valign="top" style="padding-left: 12px;">
+            <td width="{{ $msoRightWidth }}" valign="top" style="padding-{{ $start }}: 12px;">
             <![endif]-->
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $rightWidth }}" align="right" class="stack-column" style="margin-bottom: 16px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="{{ $rightWidth }}" align="{{ $end }}" class="stack-column" style="margin-bottom: 16px;">
                 <tr>
                     <td style="padding: 20px; background-color: {{ $rightBg }}; border: 1px solid {{ $borderColor }}; border-radius: 8px;">
                         @if($rightTitle !== '')

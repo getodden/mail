@@ -26,6 +26,8 @@
     $headingColor = $theme['heading_color'] ?? '#0F172A';
     $textColor = $theme['text_color'] ?? '#475569';
     $borderColor = $theme['border_color'] ?? '#E2E8F0';
+    $start = ($direction ?? 'ltr') === 'rtl' ? 'right' : 'left';
+    $end = $start === 'left' ? 'right' : 'left';
 @endphp
 
 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0;">
@@ -44,15 +46,15 @@
             @endif
 
             <!--[if mso]>
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"{!! $start === 'right' ? ' dir="rtl"' : '' !!}>
             <tr>
             @foreach($columns as $col)
                 <td width="190" valign="top" style="padding: 6px;">
             <![endif]-->
             @foreach($columns as $col)
-                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="31%" align="left" class="stack-column" style="max-width: 190px; margin-bottom: 16px; margin-right: 2%;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="31%" align="{{ $start }}" class="stack-column" style="max-width: 190px; margin-bottom: 16px; margin-{{ $end }}: 2%;">
                     <tr>
-                        <td style="padding: 16px; background-color: #F8FAFC; border: 1px solid {{ $borderColor }}; border-radius: 8px; text-align: left;">
+                        <td style="padding: 16px; background-color: #F8FAFC; border: 1px solid {{ $borderColor }}; border-radius: 8px; text-align: {{ $start }};">
                             @if(!empty($col['image_url']))
                                 <img src="{{ $col['image_url'] }}" alt="{{ $col['title'] ?? '' }}" style="display: block; width: 100%; height: auto; border-radius: 4px; margin-bottom: 12px; border: 0;">
                             @endif

@@ -358,6 +358,35 @@ The field's theme wins over a theme sent by the browser.
 - **It follows the form.** When the form changes the state itself, for example an action that applies a preset with `$set('slots', ...)`, the editor shows the new content.
 - A disabled field is shown but cannot be edited.
 
+#### Translating the editor, right-to-left, and the block schema
+
+Every option is optional, and each takes a value or a closure. Without them the editor is English and left-to-right, as before.
+
+```php
+MailEditor::make('slots')
+    ->translations(['undo' => 'تراجع', 'redo' => 'إعادة'])   // a key left out stays English
+    ->direction('rtl')                                        // 'ltr' or 'rtl': mirrors the editor panel
+    ->locale('ar');                                           // sets `lang` on the editor
+```
+
+`MailEditor::DEFAULT_STRINGS` lists every key with its English text. A value such as `{label}` or `{position}` is filled in by the editor, so keep it in the translation. `MailEditor::make('slots')->getTranslations()` returns what the host set, and unknown keys are dropped.
+
+`direction()` and `locale()` change the editor's interface only. To compile the email right-to-left, set `direction` in the theme (below).
+
+To change the blocks the editor offers, extend `MailEditor` and override `getEditorSchema()`, which returns `SlotSchemaRegistry::toArray()` by default.
+
+#### Right-to-left and dark mode in the email
+
+These theme keys are all optional:
+
+| Key | Effect |
+| --- | --- |
+| `direction` | `rtl` mirrors the header and the column slots (`two-column`, `three-column`, `asymmetric-columns`, `gallery`) and sets `dir="rtl"` on the document. The default is `ltr`. |
+| `view_in_browser_label` | The text of the header's "View in browser" link. The default is `View in browser`. |
+| `dark_background_color`, `dark_text_color`, `dark_content_background_color` | Colors for `@media (prefers-color-scheme: dark)`. A key you leave out gets no dark override. |
+
+The layout always declares `color-scheme` and `supported-color-schemes` as `light dark`.
+
 ## Supported Slot Types (31 Total)
 
 | Slot Type | Key | Description |

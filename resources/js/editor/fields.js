@@ -1,8 +1,10 @@
 // The property panel: one control for each field of a slot's schema.
 
 import { h } from './dom.js';
+import { translate } from './i18n.js';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+const english = (key, params) => translate(null, key, params);
 
 /**
  * @param {object} options
@@ -12,6 +14,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
  * @param {string} options.idPrefix  Makes control ids unique.
  * @param {(path: Array<string|number>, value: *) => void} options.onChange
  * @param {(action: string, path: Array<string|number>, index: number) => void} options.onItem  List actions: add, remove, up, down.
+ * @param {(key: string, params?: object) => string} [options.t]  Translates an interface string (English when omitted).
  */
 export function renderField(options) {
     const { field, path } = options;
@@ -43,7 +46,7 @@ function describedBy(helpId) {
     return helpId ? { 'aria-describedby': helpId } : {};
 }
 
-function renderControl({ field, value, path, onChange }, id, helpId) {
+function renderControl({ field, value, path, onChange, t = english }, id, helpId) {
     const shared = { id, ...describedBy(helpId), 'aria-required': field.required ? 'true' : false };
 
     switch (field.type) {
@@ -70,7 +73,7 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
             });
 
         case 'select':
-            return renderSelect({ field, value, path, onChange }, shared);
+            return renderSelect({ field, value, path, onChange, t }, shared);
 
         case 'toggle':
             return h('input', { ...shared, type: 'checkbox', role: 'switch', class: 'ome-switch', checked: value === true, onchange: (event) => onChange(path, event.target.checked) });
@@ -86,7 +89,7 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
             });
 
         case 'color':
-            return renderColor({ field, value, path, onChange }, shared);
+            return renderColor({ field, value, path, onChange, t }, shared);
 
         default:
             return h('input', {
@@ -102,13 +105,13 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
     }
 }
 
-function renderSelect({ field, value, path, onChange }, shared) {
+function renderSelect({ field, value, path, onChange, t = english }, shared) {
     const options = [...field.options];
     const known = options.some((option) => String(option.value) === String(value));
 
     // A stored value the schema does not list stays selectable, so opening a slot never silently changes it.
     if (value !== undefined && value !== null && value !== '' && !known) {
-        options.push({ value, label: `${value} (custom)` });
+        options.push({ value, label: t('custom_option', { value }) });
     }
 
     const select = h(
@@ -128,12 +131,12 @@ function renderSelect({ field, value, path, onChange }, shared) {
     return select;
 }
 
-function renderColor({ field, value, path, onChange }, shared) {
+function renderColor({ field, value, path, onChange, t = english }, shared) {
     const text = h('input', {
         ...shared,
         type: 'text',
         class: 'ome-input ome-color-text',
-        placeholder: field.default ?? 'Not set',
+        placeholder: field.default ?? t('not_set'),
         autocomplete: 'off',
         spellcheck: 'false',
         value: value ?? '',
@@ -141,7 +144,7 @@ function renderColor({ field, value, path, onChange }, shared) {
     const picker = h('input', {
         type: 'color',
         class: 'ome-color',
-        'aria-label': `${field.label}: pick a color`,
+        'aria-label': t('pick_color', { label: field.label }),
         value: HEX.test(value ?? '') ? value : HEX.test(field.default ?? '') ? field.default : '#000000',
         oninput: (event) => {
             text.value = event.target.value;
@@ -161,7 +164,7 @@ function renderColor({ field, value, path, onChange }, shared) {
 }
 
 function renderItems(options, id) {
-    const { field, value, path, onItem } = options;
+    const { field, value, path, onItem, t = english } = options;
     const items = Array.isArray(value) ? value : [];
 
     return h(
@@ -171,14 +174,14 @@ function renderItems(options, id) {
         items.map((item, index) =>
             h(
                 'div',
-                { class: 'ome-item', role: 'group', 'aria-label': `${field.label} ${index + 1} of ${items.length}` },
+                { class: 'ome-item', role: 'group', 'aria-label': t('item_label', { label: field.label, position: index + 1, total: items.length }) },
                 h(
                     'div',
                     { class: 'ome-item-bar' },
                     h('span', { class: 'ome-item-title' }, `${index + 1}`),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move item ${index + 1} up`, disabled: index === 0, onclick: () => onItem('up', path, index) }, '↑'),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move item ${index + 1} down`, disabled: index === items.length - 1, onclick: () => onItem('down', path, index) }, '↓'),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Remove item ${index + 1}`, onclick: () => onItem('remove', path, index) }, '✕'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('move_item_up', { position: index + 1 }), disabled: index === 0, onclick: () => onItem('up', path, index) }, '↑'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('move_item_down', { position: index + 1 }), disabled: index === items.length - 1, onclick: () => onItem('down', path, index) }, '↓'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('remove_item', { position: index + 1 }), onclick: () => onItem('remove', path, index) }, '✕'),
                 ),
                 field.items.map((subField) =>
                     renderField({
@@ -191,6 +194,6 @@ function renderItems(options, id) {
                 ),
             ),
         ),
-        h('button', { type: 'button', class: 'ome-button ome-button-quiet', onclick: () => onItem('add', path, items.length) }, `Add item`),
+        h('button', { type: 'button', class: 'ome-button ome-button-quiet', onclick: () => onItem('add', path, items.length) }, t('add_item')),
     );
 }

@@ -409,11 +409,79 @@ class History {
     }
 }
 
+// ---- i18n.js
+// The editor's interface strings. A host passes a dictionary (`strings`); a missing key falls back to the English text
+// here. Keep this list in step with `MailEditor::DEFAULT_STRINGS` (a test compares them).
+
+const DEFAULT_STRINGS = {
+    'undo': 'Undo',
+    'redo': 'Redo',
+    'undone': 'Undone.',
+    'redone': 'Redone.',
+    'desktop': 'Desktop',
+    'mobile': 'Mobile',
+    'search_blocks': 'Search blocks',
+    'no_match': 'No block matches your search.',
+    'tab_blocks': 'Blocks',
+    'tab_structure': 'Structure',
+    'left_panel': 'Left panel',
+    'blocks_and_structure': 'Blocks and structure',
+    'email_preview': 'Email preview',
+    'selected_block': 'Selected block',
+    'empty': 'Drag a block here, or choose one from the list on the left.',
+    'block_settings': 'Block settings',
+    'select_a_block': 'Select a block in the email or in the structure list to change it.',
+    'not_editable': 'This kind of block cannot be edited here yet. You can still move, duplicate and delete it, and its content is kept as it is.',
+    'style_options': 'Style options',
+    'loading': 'Loading…',
+    'updating_preview': 'Updating preview…',
+    'schema_failed': 'The schema could not be loaded ({status}).',
+    'preview_failed': 'The preview could not be rendered ({status}).',
+    'drag_to_move': 'Drag to move',
+    'drag_label': 'Drag {label} to move it. Or use the move buttons.',
+    'move_up': 'Move up',
+    'move_down': 'Move down',
+    'duplicate': 'Duplicate',
+    'delete': 'Delete',
+    'move_up_label': 'Move {label} up',
+    'move_down_label': 'Move {label} down',
+    'duplicate_label': 'Duplicate {label}',
+    'delete_label': 'Delete {label}',
+    'block_added': '{label} added at position {position} of {total}.',
+    'block_moved': '{label} moved to position {position} of {total}.',
+    'block_duplicated': 'Duplicated. The copy is at position {position} of {total}.',
+    'block_deleted': '{label} deleted. Press undo to bring it back.',
+    'move_cancelled': 'Move cancelled.',
+    'item_added': 'List item added.',
+    'item_removed': 'List item removed.',
+    'item_moved': 'List item moved.',
+    'palette_label': '{label}. Add to the email.',
+    'palette_hint': 'Click to add, or drag onto the email.',
+    'structure_label': '{label}. Block {position} of {total}.',
+    'item_label': '{label} {position} of {total}',
+    'move_item_up': 'Move item {position} up',
+    'move_item_down': 'Move item {position} down',
+    'remove_item': 'Remove item {position}',
+    'add_item': 'Add item',
+    'custom_option': '{value} (custom)',
+    'not_set': 'Not set',
+    'pick_color': '{label}: pick a color',
+};
+
+/** The text for `key` with `{name}` placeholders filled from `params`: the host's string, else the English one. */
+function translate(strings, key, params = {}) {
+    const text = typeof strings?.[key] === 'string' ? strings[key] : (DEFAULT_STRINGS[key] ?? key);
+
+    return text.replace(/\{(\w+)\}/g, (placeholder, name) => (name in params ? String(params[name]) : placeholder));
+}
+
 // ---- fields.js
 // The property panel: one control for each field of a slot's schema.
 
 
+
 const HEX = /^#[0-9a-fA-F]{6}$/;
+const english = (key, params) => translate(null, key, params);
 
 /**
  * @param {object} options
@@ -423,6 +491,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
  * @param {string} options.idPrefix  Makes control ids unique.
  * @param {(path: Array<string|number>, value: *) => void} options.onChange
  * @param {(action: string, path: Array<string|number>, index: number) => void} options.onItem  List actions: add, remove, up, down.
+ * @param {(key: string, params?: object) => string} [options.t]  Translates an interface string (English when omitted).
  */
 function renderField(options) {
     const { field, path } = options;
@@ -454,7 +523,7 @@ function describedBy(helpId) {
     return helpId ? { 'aria-describedby': helpId } : {};
 }
 
-function renderControl({ field, value, path, onChange }, id, helpId) {
+function renderControl({ field, value, path, onChange, t = english }, id, helpId) {
     const shared = { id, ...describedBy(helpId), 'aria-required': field.required ? 'true' : false };
 
     switch (field.type) {
@@ -481,7 +550,7 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
             });
 
         case 'select':
-            return renderSelect({ field, value, path, onChange }, shared);
+            return renderSelect({ field, value, path, onChange, t }, shared);
 
         case 'toggle':
             return h('input', { ...shared, type: 'checkbox', role: 'switch', class: 'ome-switch', checked: value === true, onchange: (event) => onChange(path, event.target.checked) });
@@ -497,7 +566,7 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
             });
 
         case 'color':
-            return renderColor({ field, value, path, onChange }, shared);
+            return renderColor({ field, value, path, onChange, t }, shared);
 
         default:
             return h('input', {
@@ -513,13 +582,13 @@ function renderControl({ field, value, path, onChange }, id, helpId) {
     }
 }
 
-function renderSelect({ field, value, path, onChange }, shared) {
+function renderSelect({ field, value, path, onChange, t = english }, shared) {
     const options = [...field.options];
     const known = options.some((option) => String(option.value) === String(value));
 
     // A stored value the schema does not list stays selectable, so opening a slot never silently changes it.
     if (value !== undefined && value !== null && value !== '' && !known) {
-        options.push({ value, label: `${value} (custom)` });
+        options.push({ value, label: t('custom_option', { value }) });
     }
 
     const select = h(
@@ -539,12 +608,12 @@ function renderSelect({ field, value, path, onChange }, shared) {
     return select;
 }
 
-function renderColor({ field, value, path, onChange }, shared) {
+function renderColor({ field, value, path, onChange, t = english }, shared) {
     const text = h('input', {
         ...shared,
         type: 'text',
         class: 'ome-input ome-color-text',
-        placeholder: field.default ?? 'Not set',
+        placeholder: field.default ?? t('not_set'),
         autocomplete: 'off',
         spellcheck: 'false',
         value: value ?? '',
@@ -552,7 +621,7 @@ function renderColor({ field, value, path, onChange }, shared) {
     const picker = h('input', {
         type: 'color',
         class: 'ome-color',
-        'aria-label': `${field.label}: pick a color`,
+        'aria-label': t('pick_color', { label: field.label }),
         value: HEX.test(value ?? '') ? value : HEX.test(field.default ?? '') ? field.default : '#000000',
         oninput: (event) => {
             text.value = event.target.value;
@@ -572,7 +641,7 @@ function renderColor({ field, value, path, onChange }, shared) {
 }
 
 function renderItems(options, id) {
-    const { field, value, path, onItem } = options;
+    const { field, value, path, onItem, t = english } = options;
     const items = Array.isArray(value) ? value : [];
 
     return h(
@@ -582,14 +651,14 @@ function renderItems(options, id) {
         items.map((item, index) =>
             h(
                 'div',
-                { class: 'ome-item', role: 'group', 'aria-label': `${field.label} ${index + 1} of ${items.length}` },
+                { class: 'ome-item', role: 'group', 'aria-label': t('item_label', { label: field.label, position: index + 1, total: items.length }) },
                 h(
                     'div',
                     { class: 'ome-item-bar' },
                     h('span', { class: 'ome-item-title' }, `${index + 1}`),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move item ${index + 1} up`, disabled: index === 0, onclick: () => onItem('up', path, index) }, '↑'),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move item ${index + 1} down`, disabled: index === items.length - 1, onclick: () => onItem('down', path, index) }, '↓'),
-                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Remove item ${index + 1}`, onclick: () => onItem('remove', path, index) }, '✕'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('move_item_up', { position: index + 1 }), disabled: index === 0, onclick: () => onItem('up', path, index) }, '↑'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('move_item_down', { position: index + 1 }), disabled: index === items.length - 1, onclick: () => onItem('down', path, index) }, '↓'),
+                    h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': t('remove_item', { position: index + 1 }), onclick: () => onItem('remove', path, index) }, '✕'),
                 ),
                 field.items.map((subField) =>
                     renderField({
@@ -602,7 +671,7 @@ function renderItems(options, id) {
                 ),
             ),
         ),
-        h('button', { type: 'button', class: 'ome-button ome-button-quiet', onclick: () => onItem('add', path, items.length) }, `Add item`),
+        h('button', { type: 'button', class: 'ome-button ome-button-quiet', onclick: () => onItem('add', path, items.length) }, t('add_item')),
     );
 }
 
@@ -657,13 +726,14 @@ const FALLBACK_ICON = 'squares-2x2';
 
 
 
+
 const STYLESHEET = null;
 const RENDER_DELAY_MS = 250;
 const DRAG_THRESHOLD_PX = 5;
 const SCROLL_EDGE_PX = 70;
 
 /** The default adapter: the two routes of the package (`mail-builder.editor.routes`). */
-function fetchAdapter(element) {
+function fetchAdapter(element, t) {
     const headers = () => {
         const token = document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -680,7 +750,7 @@ function fetchAdapter(element) {
             const response = await fetch(element.getAttribute('schema-url'), { headers: headers(), credentials: 'same-origin' });
 
             if (!response.ok) {
-                throw new Error(`The schema could not be loaded (${response.status}).`);
+                throw new Error(t('schema_failed', { status: response.status }));
             }
 
             return response.json();
@@ -689,7 +759,7 @@ function fetchAdapter(element) {
             const response = await fetch(element.getAttribute('preview-url'), { method: 'POST', headers: headers(), credentials: 'same-origin', body: JSON.stringify(documentData) });
 
             if (!response.ok) {
-                throw new Error(`The preview could not be rendered (${response.status}).`);
+                throw new Error(t('preview_failed', { status: response.status }));
             }
 
             return (await response.json()).html;
@@ -704,6 +774,7 @@ class OddenMailEditor extends HTMLElement {
     #query = '';
     #tab = 'blocks';
     #labels = {};
+    #strings = {};
     #slots = [];
     #base = {};
     #selectedId = null;
@@ -736,6 +807,7 @@ class OddenMailEditor extends HTMLElement {
     };
     #onResize = () => this.#syncOverlay();
     #docObserver = null;
+    #t = (key, params) => translate(this.#strings, key, params);
 
     static get observedAttributes() {
         return ['value'];
@@ -758,6 +830,15 @@ class OddenMailEditor extends HTMLElement {
     }
 
     /**
+     * The interface dictionary (see `DEFAULT_STRINGS` in i18n.js): a key that is missing stays English. Set it before the
+     * editor is connected (or, when the host sets `adapter`, before that), as the interface is drawn once. `dir` and `lang`
+     * are the element's own attributes: `dir="rtl"` mirrors the interface.
+     */
+    set strings(strings) {
+        this.#strings = strings && typeof strings === 'object' ? strings : {};
+    }
+
+    /**
      * Replace how the editor talks to the server (`{loadSchema(), preview(document)}`): for tests, for a host that has
      * no routes (the Filament field), or for other routes. An editor with no `schema-url` waits until this is set.
      */
@@ -766,6 +847,7 @@ class OddenMailEditor extends HTMLElement {
 
         if (this.#waitingForAdapter) {
             this.#waitingForAdapter = false;
+            this.#build();
             this.#start();
         }
     }
@@ -782,7 +864,6 @@ class OddenMailEditor extends HTMLElement {
 
     connectedCallback() {
         this.#injectStyles();
-        this.#build();
         document.addEventListener('keydown', this.#onKeydown);
         document.addEventListener('pointerdown', this.#onPointerdown, true);
         document.addEventListener('focusin', this.#onFocusin);
@@ -791,11 +872,11 @@ class OddenMailEditor extends HTMLElement {
         if (!this.#adapter && !this.hasAttribute('schema-url')) {
             // The host sets `adapter` right after the element is created: wait for it instead of guessing URLs.
             this.#waitingForAdapter = true;
-            this.#setStatus('Loading…');
 
             return;
         }
 
+        this.#build();
         this.#start();
     }
 
@@ -826,29 +907,29 @@ class OddenMailEditor extends HTMLElement {
 
         const refs = this.#refs;
 
-        refs.undo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#undo() }, 'Undo');
-        refs.redo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#redo() }, 'Redo');
-        refs.desktop = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'true', onclick: () => this.#setDevice('desktop') }, 'Desktop');
-        refs.mobile = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'false', onclick: () => this.#setDevice('mobile') }, 'Mobile');
+        refs.undo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#undo() }, this.#t('undo'));
+        refs.redo = h('button', { type: 'button', class: 'ome-button', onclick: () => this.#redo() }, this.#t('redo'));
+        refs.desktop = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'true', onclick: () => this.#setDevice('desktop') }, this.#t('desktop'));
+        refs.mobile = h('button', { type: 'button', class: 'ome-button', 'aria-pressed': 'false', onclick: () => this.#setDevice('mobile') }, this.#t('mobile'));
         refs.status = h('span', { class: 'ome-status', role: 'status' });
         refs.live = h('div', { class: 'ome-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
         refs.palette = h('div', { class: 'ome-palette' });
-        refs.search = h('input', { type: 'search', class: 'ome-input ome-search', placeholder: 'Search blocks', 'aria-label': 'Search blocks', autocomplete: 'off', oninput: (event) => this.#search(event.target.value) });
-        refs.noMatch = h('p', { class: 'ome-help', hidden: true }, 'No block matches your search.');
+        refs.search = h('input', { type: 'search', class: 'ome-input ome-search', placeholder: this.#t('search_blocks'), 'aria-label': this.#t('search_blocks'), autocomplete: 'off', oninput: (event) => this.#search(event.target.value) });
+        refs.noMatch = h('p', { class: 'ome-help', hidden: true }, this.#t('no_match'));
         refs.structure = h('ol', { class: 'ome-structure' });
-        refs.tabBlocks = h('button', { type: 'button', role: 'tab', id: 'ome-tab-blocks', class: 'ome-tab', 'aria-selected': 'true', 'aria-controls': 'ome-pane-blocks', onclick: () => this.#setTab('blocks') }, 'Blocks');
-        refs.tabStructure = h('button', { type: 'button', role: 'tab', id: 'ome-tab-structure', class: 'ome-tab', 'aria-selected': 'false', 'aria-controls': 'ome-pane-structure', tabindex: '-1', onclick: () => this.#setTab('structure') }, 'Structure');
-        refs.tabs = h('div', { class: 'ome-tabs', role: 'tablist', 'aria-label': 'Left panel', onkeydown: (event) => this.#tabKey(event) }, refs.tabBlocks, refs.tabStructure);
+        refs.tabBlocks = h('button', { type: 'button', role: 'tab', id: 'ome-tab-blocks', class: 'ome-tab', 'aria-selected': 'true', 'aria-controls': 'ome-pane-blocks', onclick: () => this.#setTab('blocks') }, this.#t('tab_blocks'));
+        refs.tabStructure = h('button', { type: 'button', role: 'tab', id: 'ome-tab-structure', class: 'ome-tab', 'aria-selected': 'false', 'aria-controls': 'ome-pane-structure', tabindex: '-1', onclick: () => this.#setTab('structure') }, this.#t('tab_structure'));
+        refs.tabs = h('div', { class: 'ome-tabs', role: 'tablist', 'aria-label': this.#t('left_panel'), onkeydown: (event) => this.#tabKey(event) }, refs.tabBlocks, refs.tabStructure);
         refs.blocksPane = h('div', { class: 'ome-pane', id: 'ome-pane-blocks', role: 'tabpanel', 'aria-labelledby': 'ome-tab-blocks' }, refs.search, refs.palette, refs.noMatch);
         refs.structurePane = h('div', { class: 'ome-pane', id: 'ome-pane-structure', role: 'tabpanel', 'aria-labelledby': 'ome-tab-structure', hidden: true }, refs.structure);
         refs.panel = h('div', { class: 'ome-panel' });
-        refs.iframe = h('iframe', { class: 'ome-iframe', title: 'Email preview', sandbox: 'allow-same-origin', scrolling: 'no' });
+        refs.iframe = h('iframe', { class: 'ome-iframe', title: this.#t('email_preview'), sandbox: 'allow-same-origin', scrolling: 'no' });
         refs.boxes = h('div', { class: 'ome-boxes', 'aria-hidden': 'true' });
         refs.drop = h('div', { class: 'ome-drop', hidden: true });
-        refs.toolbar = h('div', { class: 'ome-slot-toolbar', role: 'toolbar', 'aria-label': 'Selected block', hidden: true });
+        refs.toolbar = h('div', { class: 'ome-slot-toolbar', role: 'toolbar', 'aria-label': this.#t('selected_block'), hidden: true });
         refs.overlay = h('div', { class: 'ome-overlay' }, refs.boxes, refs.drop, refs.toolbar);
         refs.stage = h('div', { class: 'ome-stage' }, refs.iframe, refs.overlay);
-        refs.empty = h('p', { class: 'ome-empty', hidden: true }, 'Drag a block here, or choose one from the list on the left.');
+        refs.empty = h('p', { class: 'ome-empty', hidden: true }, this.#t('empty'));
         refs.error = h('p', { class: 'ome-error', role: 'alert', hidden: true });
 
         const root = h(
@@ -858,9 +939,9 @@ class OddenMailEditor extends HTMLElement {
             h(
                 'div',
                 { class: 'ome-body' },
-                h('aside', { class: 'ome-left', 'aria-label': 'Blocks and structure' }, refs.tabs, refs.blocksPane, refs.structurePane),
+                h('aside', { class: 'ome-left', 'aria-label': this.#t('blocks_and_structure') }, refs.tabs, refs.blocksPane, refs.structurePane),
                 h('main', { class: 'ome-canvas' }, refs.error, refs.empty, refs.stage),
-                h('aside', { class: 'ome-right', 'aria-label': 'Block settings' }, refs.panel),
+                h('aside', { class: 'ome-right', 'aria-label': this.#t('block_settings') }, refs.panel),
             ),
             refs.live,
         );
@@ -899,8 +980,8 @@ class OddenMailEditor extends HTMLElement {
     }
 
     async #start() {
-        this.#adapter ??= fetchAdapter(this);
-        this.#setStatus('Loading…');
+        this.#adapter ??= fetchAdapter(this, this.#t);
+        this.#setStatus(this.#t('loading'));
 
         try {
             const schema = await this.#adapter.loadSchema();
@@ -974,7 +1055,7 @@ class OddenMailEditor extends HTMLElement {
         }
 
         this.#slots = this.#history.undo();
-        this.#afterHistory('Undone.');
+        this.#afterHistory(this.#t('undone'));
     }
 
     #redo() {
@@ -983,7 +1064,7 @@ class OddenMailEditor extends HTMLElement {
         }
 
         this.#slots = this.#history.redo();
-        this.#afterHistory('Redone.');
+        this.#afterHistory(this.#t('redone'));
     }
 
     #afterHistory(message) {
@@ -1046,7 +1127,7 @@ class OddenMailEditor extends HTMLElement {
 
     #scheduleRender(immediate) {
         clearTimeout(this.#renderTimer);
-        this.#setStatus('Updating preview…');
+        this.#setStatus(this.#t('updating_preview'));
 
         if (immediate) {
             this.#renderPreview();
@@ -1146,12 +1227,12 @@ class OddenMailEditor extends HTMLElement {
 
         clear(toolbar);
         toolbar.append(
-            h('button', { type: 'button', class: 'ome-handle', 'aria-label': `Drag ${label} to move it. Or use the move buttons.`, title: 'Drag to move', onpointerdown: (event) => this.#startDrag(event, { kind: 'move', id, label }) }, '⠿'),
+            h('button', { type: 'button', class: 'ome-handle', 'aria-label': this.#t('drag_label', { label }), title: this.#t('drag_to_move'), onpointerdown: (event) => this.#startDrag(event, { kind: 'move', id, label }) }, '⠿'),
             h('span', { class: 'ome-slot-name' }, label),
-            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move ${label} up`, title: 'Move up', disabled: index === 0, onclick: () => this.#moveSlot(id, -1) }, '↑'),
-            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Move ${label} down`, title: 'Move down', disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(id, 1) }, '↓'),
-            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Duplicate ${label}`, title: 'Duplicate', onclick: () => this.#duplicate(id) }, '⧉'),
-            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Delete ${label}`, title: 'Delete', onclick: () => this.#remove(id) }, '✕'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('move_up_label', { label }), title: this.#t('move_up'), disabled: index === 0, onclick: () => this.#moveSlot(id, -1) }, '↑'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('move_down_label', { label }), title: this.#t('move_down'), disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(id, 1) }, '↓'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('duplicate_label', { label }), title: this.#t('duplicate'), onclick: () => this.#duplicate(id) }, '⧉'),
+            h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('delete_label', { label }), title: this.#t('delete'), onclick: () => this.#remove(id) }, '✕'),
         );
         toolbar.style.top = `${Math.max(rect.top - 34, 2)}px`;
         toolbar.style.left = `${Math.max(rect.left + 4, 2)}px`;
@@ -1171,7 +1252,7 @@ class OddenMailEditor extends HTMLElement {
         const slot = createSlot(slotSchema);
         const at = index ?? this.#insertionPoint();
 
-        this.#commit(insertAt(this.#slots, at, slot), { select: slot.id, announce: `${slotSchema.label} added at position ${at + 1} of ${this.#slots.length + 1}.` });
+        this.#commit(insertAt(this.#slots, at, slot), { select: slot.id, announce: this.#t('block_added', { label: slotSchema.label, position: at + 1, total: this.#slots.length + 1 }) });
     }
 
     /** Where a block chosen from the list goes: after the selected block, or at the end. */
@@ -1188,7 +1269,7 @@ class OddenMailEditor extends HTMLElement {
             return;
         }
 
-        this.#commit(next, { announce: `${this.#labelOf(this.#slots[indexOfSlot(this.#slots, id)])} moved to position ${indexOfSlot(next, id) + 1} of ${next.length}.` });
+        this.#commit(next, { announce: this.#t('block_moved', { label: this.#labelOf(this.#slots[indexOfSlot(this.#slots, id)]), position: indexOfSlot(next, id) + 1, total: next.length }) });
         this.#focusStructure(id, step < 0 ? 'up' : 'down');
     }
 
@@ -1196,7 +1277,7 @@ class OddenMailEditor extends HTMLElement {
         const { slots, copy } = duplicateSlot(this.#slots, id);
 
         if (copy) {
-            this.#commit(slots, { select: copy.id, announce: `Duplicated. The copy is at position ${indexOfSlot(slots, copy.id) + 1} of ${slots.length}.` });
+            this.#commit(slots, { select: copy.id, announce: this.#t('block_duplicated', { position: indexOfSlot(slots, copy.id) + 1, total: slots.length }) });
         }
     }
 
@@ -1211,7 +1292,7 @@ class OddenMailEditor extends HTMLElement {
         const next = removeSlot(this.#slots, id);
         const neighbour = next[Math.min(index, next.length - 1)]?.id ?? null;
 
-        this.#commit(next, { select: neighbour, announce: `${label} deleted. Press undo to bring it back.` });
+        this.#commit(next, { select: neighbour, announce: this.#t('block_deleted', { label }) });
         this.#refs.structure.querySelector('.ome-structure-select')?.focus({ preventScroll: true });
     }
 
@@ -1245,7 +1326,7 @@ class OddenMailEditor extends HTMLElement {
             next = moveItem(next, id, key, index, action === 'up' ? -1 : 1);
         }
 
-        this.#commit(next, { announce: `List item ${action === 'add' ? 'added' : action === 'remove' ? 'removed' : 'moved'}.` });
+        this.#commit(next, { announce: this.#t(action === 'add' ? 'item_added' : action === 'remove' ? 'item_removed' : 'item_moved') });
     }
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -1280,8 +1361,8 @@ class OddenMailEditor extends HTMLElement {
                 type: 'button',
                 class: 'ome-tile',
                 'data-type': slotSchema.type,
-                'aria-label': `${slotSchema.label}. Add to the email.`,
-                title: `${slotSchema.label}${slotSchema.description ? `: ${slotSchema.description}` : ''}\nClick to add, or drag onto the email.`,
+                'aria-label': this.#t('palette_label', { label: slotSchema.label }),
+                title: `${slotSchema.label}${slotSchema.description ? `: ${slotSchema.description}` : ''}\n${this.#t('palette_hint')}`,
                 onclick: (event) => {
                     // A drag ends with a click on the same element: that click must not add a second block.
                     if (this.#suppressClick) {
@@ -1326,7 +1407,10 @@ class OddenMailEditor extends HTMLElement {
     #tabKey(event) {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End') {
             event.preventDefault();
-            this.#setTab(event.key === 'ArrowLeft' || event.key === 'Home' ? 'blocks' : 'structure', { focus: true });
+            // The first tab is on the right in RTL, so the arrows swap.
+            const first = getComputedStyle(this).direction === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+
+            this.#setTab(event.key === first || event.key === 'Home' ? 'blocks' : 'structure', { focus: true });
         }
     }
 
@@ -1357,17 +1441,17 @@ class OddenMailEditor extends HTMLElement {
                     { class: `ome-structure-item${selected ? ' is-selected' : ''}`, 'data-id': slot.id },
                     h(
                         'button',
-                        { type: 'button', class: 'ome-structure-select', 'aria-current': selected ? 'true' : false, 'aria-label': `${label}${summary ? `: ${summary}` : ''}. Block ${index + 1} of ${this.#slots.length}.`, onclick: () => this.#select(slot.id) },
+                        { type: 'button', class: 'ome-structure-select', 'aria-current': selected ? 'true' : false, 'aria-label': this.#t('structure_label', { label: `${label}${summary ? `: ${summary}` : ''}`, position: index + 1, total: this.#slots.length }), onclick: () => this.#select(slot.id) },
                         h('span', { class: 'ome-structure-label' }, label),
                         summary ? h('span', { class: 'ome-structure-summary' }, summary) : null,
                     ),
                     h(
                         'span',
                         { class: 'ome-structure-actions' },
-                        h('button', { type: 'button', 'data-action': 'up', class: 'ome-icon-button', 'aria-label': `Move ${label} up`, disabled: index === 0, onclick: () => this.#moveSlot(slot.id, -1) }, '↑'),
-                        h('button', { type: 'button', 'data-action': 'down', class: 'ome-icon-button', 'aria-label': `Move ${label} down`, disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(slot.id, 1) }, '↓'),
-                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Duplicate ${label}`, onclick: () => this.#duplicate(slot.id) }, '⧉'),
-                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': `Delete ${label}`, onclick: () => this.#remove(slot.id) }, '✕'),
+                        h('button', { type: 'button', 'data-action': 'up', class: 'ome-icon-button', 'aria-label': this.#t('move_up_label', { label }), disabled: index === 0, onclick: () => this.#moveSlot(slot.id, -1) }, '↑'),
+                        h('button', { type: 'button', 'data-action': 'down', class: 'ome-icon-button', 'aria-label': this.#t('move_down_label', { label }), disabled: index === this.#slots.length - 1, onclick: () => this.#moveSlot(slot.id, 1) }, '↓'),
+                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('duplicate_label', { label }), onclick: () => this.#duplicate(slot.id) }, '⧉'),
+                        h('button', { type: 'button', class: 'ome-icon-button', 'aria-label': this.#t('delete_label', { label }), onclick: () => this.#remove(slot.id) }, '✕'),
                     ),
                 ),
             );
@@ -1391,7 +1475,7 @@ class OddenMailEditor extends HTMLElement {
         const slot = this.#slots.find((s) => s.id === this.#selectedId);
 
         if (!slot) {
-            panel.append(h('h2', { class: 'ome-heading' }, 'Block settings'), h('p', { class: 'ome-help' }, 'Select a block in the email or in the structure list to change it.'));
+            panel.append(h('h2', { class: 'ome-heading' }, this.#t('block_settings')), h('p', { class: 'ome-help' }, this.#t('select_a_block')));
 
             return;
         }
@@ -1401,7 +1485,7 @@ class OddenMailEditor extends HTMLElement {
         panel.append(h('h2', { class: 'ome-heading' }, this.#labelOf(slot)));
 
         if (!slotSchema) {
-            panel.append(h('p', { class: 'ome-help' }, 'This kind of block cannot be edited here yet. You can still move, duplicate and delete it, and its content is kept as it is.'));
+            panel.append(h('p', { class: 'ome-help' }, this.#t('not_editable')));
 
             return;
         }
@@ -1411,6 +1495,7 @@ class OddenMailEditor extends HTMLElement {
             value: slot.data[field.key],
             path: [field.key],
             idPrefix: `ome-${slot.id}`,
+            t: this.#t,
             onChange: (path, value) => this.#changeField(slot.id, path, value),
             onItem: (action, path, index) => this.#itemAction(slot.id, action, path, index),
         });
@@ -1420,7 +1505,7 @@ class OddenMailEditor extends HTMLElement {
         const advanced = slotSchema.fields.filter((f) => f.advanced);
 
         if (advanced.length > 0) {
-            panel.append(h('details', { class: 'ome-advanced' }, h('summary', {}, 'Style options'), ...advanced.map((f) => renderField(options(f)))));
+            panel.append(h('details', { class: 'ome-advanced' }, h('summary', {}, this.#t('style_options')), ...advanced.map((f) => renderField(options(f)))));
         }
     }
 
@@ -1553,7 +1638,7 @@ class OddenMailEditor extends HTMLElement {
             const next = moveTo(this.#slots, drag.id, index);
 
             if (next !== this.#slots) {
-                this.#commit(next, { select: drag.id, announce: `${drag.label} moved to position ${indexOfSlot(next, drag.id) + 1} of ${next.length}.` });
+                this.#commit(next, { select: drag.id, announce: this.#t('block_moved', { label: drag.label, position: indexOfSlot(next, drag.id) + 1, total: next.length }) });
             }
         }
     }
@@ -1572,7 +1657,7 @@ class OddenMailEditor extends HTMLElement {
         this.#drag = null;
 
         if (cancelled && drag.active) {
-            this.#announce('Move cancelled.');
+            this.#announce(this.#t('move_cancelled'));
         }
     }
 
@@ -1647,13 +1732,26 @@ function toList(state) {
     return state && typeof state === 'object' ? Object.values(state) : [];
 }
 
-export default function oddenMailEditorField({ state, key, schema, disabled }) {
+export default function oddenMailEditorField({ state, key, schema, disabled, strings, dir, lang }) {
     return {
         state,
         lastEmitted: null,
 
         init() {
             const editor = this.$refs.editor;
+
+            // Before the adapter: the editor draws its interface when the adapter arrives.
+            if (strings) {
+                editor.strings = strings;
+            }
+
+            if (dir) {
+                editor.dir = dir;
+            }
+
+            if (lang) {
+                editor.lang = lang;
+            }
 
             editor.adapter = {
                 loadSchema: async () => schema,

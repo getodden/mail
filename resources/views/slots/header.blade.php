@@ -7,6 +7,8 @@
     $webViewUrl = $data['web_view_url'] ?? null;
     $bgColor = $data['bg_color'] ?? '#ffffff';
     $textColor = $data['text_color'] ?? ($theme['text_color'] ?? '#64748b');
+    $rtl = ($direction ?? 'ltr') === 'rtl';
+    $viewInBrowserLabel = $theme['view_in_browser_label'] ?? 'View in browser';
 @endphp
 
 <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: {{ $bgColor }}; border-bottom: 1px solid {{ $theme['border_color'] ?? '#e2e8f0' }};">
@@ -14,7 +16,7 @@
         <td style="padding: 20px 32px;" class="mobile-padding">
             <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                    <td align="left" valign="middle">
+                    <td align="{{ $rtl ? 'right' : 'left' }}" valign="middle">
                         @if(!empty($logoUrl))
                             <img src="{{ $logoUrl }}" alt="{{ $brandName }}" height="{{ $logoHeight }}" style="display: block; border: 0; outline: none; text-decoration: none; height: {{ $logoHeight }}px; max-width: 100%;">
                         @else
@@ -28,13 +30,13 @@
                             </span>
                         @endif
                     </td>
-                    <td align="right" valign="middle" style="font-size: 12px; color: {{ $textColor }};">
+                    <td align="{{ $rtl ? 'left' : 'right' }}" valign="middle" style="font-size: 12px; color: {{ $textColor }};">
                         @if($showDate)
                             <span>{{ date('M j, Y') }}</span>
                         @endif
                         @if(!empty($webViewUrl))
                             <div style="margin-top: 4px;">
-                                <a href="{{ $webViewUrl }}" style="color: {{ $theme['primary_color'] ?? '#2563eb' }}; text-decoration: underline; font-size: 12px;">View in browser</a>
+                                <a href="{{ $webViewUrl }}" style="color: {{ $theme['primary_color'] ?? '#2563eb' }}; text-decoration: underline; font-size: 12px;">{{ $viewInBrowserLabel }}</a>
                             </div>
                         @endif
                     </td>

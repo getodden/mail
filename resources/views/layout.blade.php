@@ -1,6 +1,9 @@
 @php
-    $dir = $direction ?? ($theme['direction'] ?? 'ltr');
+    $dir = ($direction ?? ($theme['direction'] ?? 'ltr')) === 'rtl' ? 'rtl' : 'ltr';
     $lang = $theme['lang'] ?? 'en';
+    $darkBackground = $theme['dark_background_color'] ?? null;
+    $darkText = $theme['dark_text_color'] ?? null;
+    $darkContentBackground = $theme['dark_content_background_color'] ?? null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $lang }}" dir="{{ $dir }}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -43,7 +46,7 @@
                 display: block !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                direction: ltr !important;
+                direction: {{ $dir }} !important;
                 box-sizing: border-box !important;
                 padding-left: 0 !important;
                 padding-right: 0 !important;
@@ -60,6 +63,19 @@
                 display: block !important;
             }
         }
+@if($darkBackground || $darkText || $darkContentBackground)
+        @media (prefers-color-scheme: dark) {
+            @if($darkBackground)
+            body, center { background-color: {{ $darkBackground }} !important; }
+            @endif
+            @if($darkContentBackground)
+            .email-container { background-color: {{ $darkContentBackground }} !important; }
+            @endif
+            @if($darkText)
+            body, p { color: {{ $darkText }} !important; }
+            @endif
+        }
+@endif
     </style>
 </head>
 <body dir="{{ $dir }}" style="direction: {{ $dir }}; margin: 0; padding: 24px 0; background-color: {{ $theme['background_color'] ?? '#f8fafc' }}; font-family: {{ $theme['font_family'] ?? "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}; color: {{ $theme['text_color'] ?? '#334155' }};">

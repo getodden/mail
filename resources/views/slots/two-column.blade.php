@@ -13,17 +13,19 @@
 
     $bgColor = $data['bg_color'] ?? ($theme['content_background_color'] ?? '#ffffff');
     $reverse = (bool) ($data['reverse_stack_on_mobile'] ?? false);
+    $rtl = ($direction ?? 'ltr') === 'rtl';
+    $flip = $reverse xor $rtl;
 @endphp
 
 <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: {{ $bgColor }};">
     <tr>
-        <td style="padding: 24px 20px; direction: {{ $reverse ? 'rtl' : 'ltr' }};" class="mobile-padding" dir="{{ $reverse ? 'rtl' : 'ltr' }}">
+        <td style="padding: 24px 20px; direction: {{ $reverse || $rtl ? 'rtl' : 'ltr' }};" class="mobile-padding" dir="{{ $reverse || $rtl ? 'rtl' : 'ltr' }}">
             <!--[if mso]>
             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
             <tr>
             <td width="280" valign="top">
             <![endif]-->
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="48%" align="{{ $reverse ? 'right' : 'left' }}" class="stack-column" dir="ltr" style="max-width: 270px; margin-bottom: 16px; direction: ltr;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="48%" align="{{ $flip ? 'right' : 'left' }}" class="stack-column" dir="{{ $rtl ? 'rtl' : 'ltr' }}" style="max-width: 270px; margin-bottom: 16px; direction: {{ $rtl ? 'rtl' : 'ltr' }};">
                 <tr>
                     <td style="padding: 16px; background-color: #f8fafc; border: 1px solid {{ $theme['border_color'] ?? '#e2e8f0' }}; border-radius: 8px;">
                         @if(!empty($leftImage))
@@ -53,7 +55,7 @@
             </td>
             <td width="280" valign="top">
             <![endif]-->
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="48%" align="{{ $reverse ? 'left' : 'right' }}" class="stack-column" dir="ltr" style="max-width: 270px; margin-bottom: 16px; direction: ltr;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="48%" align="{{ $flip ? 'left' : 'right' }}" class="stack-column" dir="{{ $rtl ? 'rtl' : 'ltr' }}" style="max-width: 270px; margin-bottom: 16px; direction: {{ $rtl ? 'rtl' : 'ltr' }};">
                 <tr>
                     <td style="padding: 16px; background-color: #f8fafc; border: 1px solid {{ $theme['border_color'] ?? '#e2e8f0' }}; border-radius: 8px;">
                         @if(!empty($rightImage))

@@ -12,8 +12,11 @@
         x-data="oddenMailEditorField({
             state: $wire.$entangle(@js($statePath)),
             key: @js($key),
-            schema: @js(\Odden\MailBuilder\Schema\SlotSchemaRegistry::toArray()),
+            schema: @js($getEditorSchema()),
             disabled: @js($isDisabled()),
+            strings: @js($getTranslations()),
+            dir: @js($getDirection()),
+            lang: @js($getLocale()),
         })"
     >
         <odden-mail-editor x-ref="editor"></odden-mail-editor>

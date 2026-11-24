@@ -6,7 +6,7 @@ odden-mail-editor {
 
 .ome {
     --ome-ink: #1e293b;
-    --ome-muted: #64748b;
+    --ome-muted: #475569;
     --ome-line: #e2e8f0;
     --ome-surface: #ffffff;
     --ome-canvas: #f1f5f9;
@@ -50,7 +50,7 @@ odden-mail-editor {
 .ome-status {
     color: var(--ome-muted);
     font-size: 12px;
-    margin-left: auto;
+    margin-inline-start: auto;
 }
 
 .ome-body {
@@ -68,11 +68,11 @@ odden-mail-editor {
 }
 
 .ome-left {
-    border-right: 1px solid var(--ome-line);
+    border-inline-end: 1px solid var(--ome-line);
 }
 
 .ome-right {
-    border-left: 1px solid var(--ome-line);
+    border-inline-start: 1px solid var(--ome-line);
 }
 
 .ome-heading {
@@ -279,7 +279,7 @@ odden-mail-editor {
     min-height: 34px;
     min-width: 0;
     padding: 4px 8px;
-    text-align: left;
+    text-align: start;
 }
 
 .ome-structure-label {

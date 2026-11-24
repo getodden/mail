@@ -2,6 +2,25 @@
 
 All notable changes to `getodden/mail` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `MailEditor::translations()`, `direction()` and `locale()` translate the editor's interface and mirror it right-to-left. `MailEditor::DEFAULT_STRINGS` lists every key with its English text. Each option takes a value or a closure, and without them the editor is unchanged.
+- `MailEditor::getEditorSchema()` supplies the block schema to the field view. It returns `SlotSchemaRegistry::toArray()` by default, and a subclass can override it instead of copying the view.
+- Right-to-left emails. With the theme key `direction` set to `rtl`, the header and the column slots (`two-column`, `three-column`, `asymmetric-columns`, `gallery`) align and order right-to-left. `ltr` output is byte-identical to before.
+- Theme key `view_in_browser_label` sets the text of the header's "View in browser" link.
+- Dark mode. Theme keys `dark_background_color`, `dark_text_color` and `dark_content_background_color` add a `prefers-color-scheme: dark` block. A key left out adds no override.
+
+### Removed
+
+- Stray empty `package-lock.json`; the library ships no npm lockfile.
+
+### Fixed
+
+- Document and slot `direction` is normalized to exactly `ltr` or `rtl` (anything else becomes `ltr`) before it reaches the layout, so a crafted theme value cannot inject CSS into the `<style>` block.
+- Editor muted text (`--ome-muted`) is now `#475569`, meeting WCAG 2.2 SC 1.4.3 (4.5:1) on the canvas, line and surface backgrounds.
+
 ## [3.0.0] - 2026-11-04
 
 Version 3.0.0 is a major release because it changes what the compiler keeps from raw HTML and rich text, rejects some merge tag structures that 2.x rendered, and changes public types. If you only compile slots you built yourself, most emails render the same. If tenant users paste HTML, write `{% if %}` blocks in text fields, or you subclass the compiler, read [Upgrade notes](#upgrade-notes) first.
